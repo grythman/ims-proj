@@ -1,17 +1,13 @@
 from rest_framework import permissions
 
-class IsAdminUser(permissions.BasePermission):
+class IsTeacher(permissions.BasePermission):
     def has_permission(self, request, view):
-        return request.user and request.user.role == 'ADMIN'
+        return request.user.user_type == 'teacher'
 
-class IsStudentUser(permissions.BasePermission):
+class IsMentor(permissions.BasePermission):
     def has_permission(self, request, view):
-        return request.user and request.user.role == 'STUDENT'
+        return request.user.user_type == 'mentor'
 
-class IsCompanyRepresentative(permissions.BasePermission):
+class IsStudent(permissions.BasePermission):
     def has_permission(self, request, view):
-        return request.user and request.user.role == 'COMPANY_REP'
-
-class IsSupervisor(permissions.BasePermission):
-    def has_permission(self, request, view):
-        return request.user and request.user.role == 'SUPERVISOR' 
+        return request.user.user_type == 'student' 

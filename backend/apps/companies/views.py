@@ -1,39 +1,60 @@
-from rest_framework import viewsets, status
+from rest_framework import viewsets, permissions, filters
 from rest_framework.decorators import action
-from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from .models import Company
-from .serializers import CompanySerializer
+from django.db.models import Count, Q
+from django_filters.rest_framework import DjangoFilterBackend
+from .models import Organization, Department
+from .serializers import OrganizationSerializer, DepartmentSerializer
+from .permissions import IsOrganizationAdmin
 
-class CompanyViewSet(viewsets.ModelViewSet):
-    queryset = Company.objects.all()
-    serializer_class = CompanySerializer
-    permission_classes = [IsAuthenticated]
+class OrganizationViewSet(viewsets.ModelViewSet):
+    serializer_class = OrganizationSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ['is_active']
+    search_fields = ['name', 'description', 'contact_person']
+    ordering_fields = ['name', 'created_at']
 
     def get_queryset(self):
-        queryset = Company.objects.all()
-        if self.request.user.role == 'COMPANY_REP':
-            queryset = queryset.filter(contact_person=self.request.user)
+        queryset = Organization.objects.prefetch_related(
+            'departments',
+            'departments__head',
+            'internships'
+        ).annotate(
+            active_interns=Count('internships', filter=Q(internships__status='active')),
+            total_interns=Count('internships'),
+            mentor_count=Count('departments__head', filter=Q(departments__head__user_type='mentor'))
+        )
         return queryset
 
-    @action(detail=True, methods=['get'])
-    def internships(self, request, pk=None):
-        company = self.get_object()
-        internships = company.internship_set.all()
-        from apps.internships.serializers import InternshipSerializer
-        serializer = InternshipSerializer(internships, many=True)
-        return Response(serializer.data)
+    def get_permissions(self):
+        if self.action in ['create', 'update', 'partial_update', 'destroy']:
+            return [permissions.IsAuthenticated(), IsOrganizationAdmin()]
+        return [permissions.IsAuthenticated()]
 
-    def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        if serializer.is_valid():
-            self.perform_create(serializer)
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    @action(detail=True)
+    def stats(self, request, pk=None):
+        organization = self.get_object()
+        return Response({
+            'departments': organization.departments.count(),
+            'active_interns': organization.internships.filter(status='active').count(),
+            'total_interns': organization.internships.count(),
+            'mentors': organization.departments.filter(head__user_type='mentor').count()
+        })
 
-    @action(detail=True, methods=['post'])
-    def activate(self, request, pk=None):
-        company = self.get_object()
-        company.is_active = True
-        company.save()
-        return Response({'status': 'company activated'})
+class DepartmentViewSet(viewsets.ModelViewSet):
+    serializer_class = DepartmentSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter]
+    filterset_fields = ['is_active', 'organization']
+    search_fields = ['name', 'description']
+
+    def get_queryset(self):
+        return Department.objects.select_related(
+            'organization', 
+            'head'
+        ).prefetch_related(
+            'internships'
+        ).annotate(
+            intern_count=Count('internships', filter=Q(internships__status='active'))
+        )

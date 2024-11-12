@@ -14,27 +14,30 @@ export const AuthProvider = ({ children }) => {
     }, []);
 
     const checkAuth = async () => {
-        const token = localStorage.getItem('access_token');
-        if (token) {
-            try {
-                const response = await api.default.get('/users/me/');
-                setUser(response.data);
-            } catch (error) {
-                localStorage.removeItem('access_token');
-                localStorage.removeItem('refresh_token');
+        try {
+            const token = localStorage.getItem('access_token');
+            if (token) {
+                const userData = await api.getCurrentUser();
+                console.log('Current user data:', userData);
+                setUser(userData);
             }
+        } catch (error) {
+            console.error('Auth check failed:', error);
+            localStorage.removeItem('access_token');
+            localStorage.removeItem('refresh_token');
+        } finally {
+            setLoading(false);
         }
-        setLoading(false);
     };
 
     const login = async (username, password) => {
         try {
-            const { access, refresh } = await api.login(username, password);
-            localStorage.setItem('access_token', access);
-            localStorage.setItem('refresh_token', refresh);
-            await checkAuth();
-            navigate('/dashboard');
+            const response = await api.login(username, password);
+            console.log('Login response:', response);
+            setUser(response.user);
+            return response.user;
         } catch (error) {
+            console.error('Login failed:', error);
             throw error;
         }
     };
@@ -46,11 +49,26 @@ export const AuthProvider = ({ children }) => {
         navigate('/login');
     };
 
+    const value = {
+        user,
+        loading,
+        login,
+        logout
+    };
+
+    console.log('Current auth state:', { user, loading });
+
     return (
-        <AuthContext.Provider value={{ user, login, logout, loading }}>
+        <AuthContext.Provider value={value}>
             {children}
         </AuthContext.Provider>
     );
 };
 
-export const useAuth = () => useContext(AuthContext);
+export const useAuth = () => {
+    const context = useContext(AuthContext);
+    if (!context) {
+        throw new Error('useAuth must be used within an AuthProvider');
+    }
+    return context;
+};

@@ -1,50 +1,85 @@
-from rest_framework import viewsets, status
+from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
-from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
-from .models import User
-from .serializers import UserSerializer
+from rest_framework_simplejwt.views import TokenObtainPairView
+from django.contrib.auth import get_user_model
+from django.utils import timezone
+from .models import Activity
+from .permissions import IsUserManagerOrSelf, CanManageUsers
+from .serializers import (
+    UserSerializer, 
+    UserCreateSerializer,
+    LoginSerializer,
+    TokenObtainPairResponseSerializer
+)
+
+User = get_user_model()
+
+class CustomTokenObtainPairView(TokenObtainPairView):
+    def post(self, request, *args, **kwargs):
+        serializer = LoginSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        user = serializer.validated_data['user']
+        token = serializer.validated_data['token']
+        
+        # Update last login
+        user.last_active = timezone.now()
+        user.save(update_fields=['last_active'])
+        
+        # Log login activity
+        Activity.objects.create(
+            user=user,
+            activity_type='login',
+            description=f'User logged in successfully',
+            ip_address=request.META.get('REMOTE_ADDR')
+        )
+        
+        response_serializer = TokenObtainPairResponseSerializer({
+            'user': user,
+            'access': token['access'],
+            'refresh': token['refresh']
+        })
+        
+        return Response(response_serializer.data)
 
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
-    serializer_class = UserSerializer
+    permission_classes = [permissions.IsAuthenticated, IsUserManagerOrSelf]
 
-    def get_queryset(self):
-        queryset = User.objects.all()
-        role = self.request.query_params.get('role', None)
-        if role:
-            queryset = queryset.filter(role=role)
-        return queryset
-
-    @action(detail=False, methods=['get'])
-    def me(self, request):
-        serializer = self.get_serializer(request.user)
-        return Response(serializer.data)
-
-    @action(detail=False, methods=['post'])
-    def change_password(self, request):
-        user = request.user
-        if not user.check_password(request.data.get('old_password')):
-            return Response({'error': 'Wrong password'}, 
-                          status=status.HTTP_400_BAD_REQUEST)
-        
-        user.set_password(request.data.get('new_password'))
-        user.save()
-        return Response({'status': 'password changed'})
+    def get_serializer_class(self):
+        if self.action == 'create':
+            return UserCreateSerializer
+        return UserSerializer
 
     def get_permissions(self):
-        if self.action == 'create':  # Registration endpoint
-            permission_classes = [AllowAny]
-        else:
-            permission_classes = [IsAuthenticated]
-        return [permission() for permission in permission_classes]
+        if self.action in ['create', 'register']:
+            return [permissions.AllowAny()]
+        return [permissions.IsAuthenticated(), IsUserManagerOrSelf()]
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+
+        # Return user data without sensitive information
+        return Response(
+            UserSerializer(user, context={'request': request}).data,
+            status=status.HTTP_201_CREATED
+        )
+
+    @action(detail=False, methods=['GET', 'PUT'])
+    def me(self, request):
+        if request.method == 'GET':
+            serializer = UserSerializer(request.user)
+            return Response(serializer.data)
+        
+        serializer = UserSerializer(
+            request.user,
+            data=request.data,
+            partial=True
+        )
         if serializer.is_valid():
-            user = serializer.save()
-            return Response({
-                'user': UserSerializer(user).data,
-                'message': 'User registered successfully'
-            }, status=status.HTTP_201_CREATED)
+            serializer.save()
+            return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

@@ -16,37 +16,31 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
-from rest_framework.routers import DefaultRouter
+from django.conf import settings
+from django.conf.urls.static import static
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,
+    TokenVerifyView,
 )
-from apps.notifications.views import NotificationViewSet
-from apps.users.views import UserViewSet
-from apps.companies.views import CompanyViewSet
-from apps.internships.views import InternshipViewSet
-from .views import dashboard_stats, api_root
-
-# Initialize the router
-router = DefaultRouter()
-
-# Register viewsets
-router.register(r'users', UserViewSet, basename='user')
-router.register(r'companies', CompanyViewSet, basename='company')
-router.register(r'internships', InternshipViewSet, basename='internship')
-router.register(r'notifications', NotificationViewSet, basename='notification')
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    # JWT Authentication
+    
+    # Authentication endpoints
     path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
-    # API URLs
-    path('api/', include(router.urls)),
-    # Auth URLs
-    path('api/auth/', include('rest_framework.urls')),
-    # Dashboard stats
-    path('api/dashboard/stats/', dashboard_stats, name='dashboard-stats'),
-    # Root URL
-    path('', api_root, name='api-root'),
+    path('api/token/verify/', TokenVerifyView.as_view(), name='token_verify'),
+    
+    # API endpoints
+    path('api/users/', include('apps.users.urls')),
+    path('api/reports/', include('apps.reports.urls')),
+    path('api/dashboard/', include('apps.dashboard.urls')),
+    path('api/internships/', include('apps.internships.urls')),
+    path('api/companies/', include('apps.companies.urls')),
+    path('api/notifications/', include('apps.notifications.urls')),
 ]
+
+# Serve media files in development
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
