@@ -1,44 +1,47 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
-import { useAuth } from './AuthContext';
-import { get } from '../services/api';
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { getDashboardData } from '../services/api';
 
-const DashboardContext = createContext(null);
+const DashboardContext = createContext();
 
 export const DashboardProvider = ({ children }) => {
-    const { user } = useAuth();
-    const [dashboardData, setDashboardData] = useState(null);
+    const [dashboardData, setDashboardData] = useState({
+        stats: {
+            totalUsers: 0,
+            totalCompanies: 0,
+            activeProjects: 0,
+        },
+        recentActivity: [],
+        notifications: [],
+    });
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
-    const fetchDashboardData = useCallback(async () => {
-        if (!user?.user_type) {
-            setLoading(false);
-            return;
-        }
-        
+    const fetchDashboardData = async () => {
         try {
-            const response = await get(`/dashboard/${user.user_type.toLowerCase()}/`);
-            setDashboardData(response.data);
+            setLoading(true);
+            const data = await getDashboardData();
+            setDashboardData(data);
+            setError(null);
         } catch (err) {
-            setError(err.message);
-            console.error('Dashboard fetch error:', err);
+            setError('Failed to load dashboard data');
         } finally {
             setLoading(false);
         }
-    }, [user?.user_type]);
+    };
 
-    const refreshDashboard = useCallback(() => {
-        setLoading(true);
+    useEffect(() => {
         fetchDashboardData();
-    }, [fetchDashboardData]);
+    }, []);
 
     return (
-        <DashboardContext.Provider value={{
-            dashboardData,
-            loading,
-            error,
-            refreshDashboard
-        }}>
+        <DashboardContext.Provider
+            value={{
+                ...dashboardData,
+                loading,
+                error,
+                refreshData: fetchDashboardData,
+            }}
+        >
             {children}
         </DashboardContext.Provider>
     );

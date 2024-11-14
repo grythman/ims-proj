@@ -1,48 +1,56 @@
 import React from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
-import DashboardLayout from '../components/layout/DashboardLayout';
-import ProtectedRoute from '../components/auth/ProtectedRoute';
-
-// Auth Pages
+import { Navigate, Route, Routes } from 'react-router-dom';
 import Login from '../pages/auth/Login';
 import Register from '../pages/auth/Register';
-
-// Main Pages
-import Dashboard from '../pages/dashboard/Dashboard';
-import Profile from '../pages/profile/Profile';
-import Settings from '../pages/settings/Settings';
-
-// Internship Pages
-import Agreement from '../pages/internships/Agreement';
-import Plan from '../pages/internships/Plan';
-import Reports from '../pages/reports/Reports';
-import SubmitReport from '../pages/reports/SubmitReport';
+import Dashboard from '../pages/Dashboard';
+import Home from '../pages/Home';
+import PrivateRoute from './PrivateRoute';
+import SubmitReport from '../components/reports/SubmitReport';
 
 const AppRoutes = () => {
     return (
         <Routes>
             {/* Public Routes */}
+            <Route path="/" element={<Home />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+            <Route path="/forgot-password" element={<div>Forgot Password</div>} />
 
             {/* Protected Routes */}
-            <Route element={<ProtectedRoute />}>
-                <Route element={<DashboardLayout />}>
-                    <Route path="/dashboard" element={<Dashboard />} />
-                    <Route path="/profile" element={<Profile />} />
-                    <Route path="/settings" element={<Settings />} />
-                    
-                    {/* Internship Routes */}
-                    <Route path="/internships/agreement" element={<Agreement />} />
-                    <Route path="/internships/plan" element={<Plan />} />
-                    <Route path="/reports" element={<Reports />} />
-                    <Route path="/reports/submit" element={<SubmitReport />} />
-                </Route>
-            </Route>
+            <Route path="/dashboard" element={
+                <PrivateRoute>
+                    <Dashboard />
+                </PrivateRoute>
+            } />
+            <Route path="/internships" element={
+                <PrivateRoute>
+                    <Navigate to="/dashboard/internships" replace />
+                </PrivateRoute>
+            } />
+            <Route path="/mentors" element={
+                <PrivateRoute>
+                    <Navigate to="/dashboard/mentors" replace />
+                </PrivateRoute>
+            } />
+            <Route path="/progress" element={
+                <PrivateRoute>
+                    <Navigate to="/dashboard/progress" replace />
+                </PrivateRoute>
+            } />
+            <Route path="/analytics" element={
+                <PrivateRoute>
+                    <Navigate to="/dashboard/analytics" replace />
+                </PrivateRoute>
+            } />
 
-            {/* Default Routes */}
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
-            <Route path="*" element={<Navigate to="/dashboard" replace />} />
+            <Route path="/reports/submit" element={
+                <PrivateRoute>
+                    <SubmitReport />
+                </PrivateRoute>
+            } />
+
+            {/* Catch all route */}
+            <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
     );
 };

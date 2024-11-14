@@ -1,159 +1,151 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import StatCard from './shared/StatCard';
-import ActionCard from './shared/ActionCard';
-import { useDashboard } from '../../context/DashboardContext';
-import LoadingSpinner from '../common/LoadingSpinner';
-import ErrorMessage from '../common/ErrorMessage';
-import { 
+import { getDashboardData } from '../../services/api';
+import {
+    AcademicCapIcon,
     DocumentTextIcon,
-    ClockIcon,
+    UserIcon,
     ChartBarIcon,
-    CalendarIcon,
-    CheckCircleIcon,
-    BookOpenIcon
+    ClockIcon,
+    ExclamationCircleIcon,
+    CheckCircleIcon
 } from '@heroicons/react/24/outline';
+import LoadingSpinner from '../common/LoadingSpinner';
 
 const StudentDashboard = () => {
+    const [data, setData] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
     const navigate = useNavigate();
-    const { dashboardData, loading, error } = useDashboard();
+
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                const response = await getDashboardData();
+                setData(response);
+                setError(null);
+            } catch (error) {
+                console.error('Error fetching dashboard data:', error);
+                setError('Failed to load dashboard data');
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchData();
+    }, []);
 
     if (loading) return <LoadingSpinner />;
-    if (error) return <ErrorMessage message={error} />;
-
-    // Define navigation handlers
-    const handleSubmitReport = () => {
-        navigate('/reports/submit', { replace: true }); // Add replace: true to prevent back navigation
-    };
-
-    const handleLogHours = () => {
-        navigate('/tasks/log-hours', { replace: true });
-    };
-
-    const handleViewResources = () => {
-        navigate('/resources', { replace: true });
-    };
+    if (error) return <div className="text-red-600">{error}</div>;
 
     return (
         <div className="space-y-6">
-            {/* Welcome Section */}
-            <div className="bg-gradient-to-r from-indigo-600 to-indigo-800 rounded-lg shadow-lg p-6 text-white">
-                <div className="flex justify-between items-start">
-                    <div>
-                        <h1 className="text-3xl font-bold">Welcome, {dashboardData?.student_name || 'Student'}</h1>
-                        <p className="mt-2 text-indigo-100">
-                            Week {dashboardData?.current_week || 0} of {dashboardData?.total_weeks || 0} - 
-                            {dashboardData?.internship_status === 'active' ? ' Active' : ' Inactive'}
-                        </p>
+            {/* Profile Completion Status */}
+            <div className="bg-white rounded-lg shadow p-6">
+                <h2 className="text-lg font-semibold mb-4">Profile Completion</h2>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {Object.entries(data?.profile || {}).map(([key, completed]) => (
+                        <div key={key} className="flex items-center space-x-2">
+                            {completed ? (
+                                <CheckCircleIcon className="h-5 w-5 text-green-500" />
+                            ) : (
+                                <ExclamationCircleIcon className="h-5 w-5 text-red-500" />
+                            )}
+                            <span className="capitalize">{key.replace('_', ' ')}</span>
+                        </div>
+                    ))}
+                </div>
+            </div>
+
+            {/* Current Internship */}
+            <div className="bg-white rounded-lg shadow p-6">
+                <h2 className="text-lg font-semibold mb-4">Current Internship</h2>
+                {data?.internship ? (
+                    <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="font-semibold">{data.internship.title}</p>
+                                <p className="text-gray-600">{data.internship.organization?.name}</p>
+                            </div>
+                            <span className="px-3 py-1 rounded-full text-sm bg-emerald-100 text-emerald-800">
+                                {data.internship.status}
+                            </span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <p className="text-sm text-gray-500">Start Date</p>
+                                <p>{new Date(data.internship.start_date).toLocaleDateString()}</p>
+                            </div>
+                            <div>
+                                <p className="text-sm text-gray-500">End Date</p>
+                                <p>{new Date(data.internship.end_date).toLocaleDateString()}</p>
+                            </div>
+                        </div>
                     </div>
-                    <div className="flex gap-4">
-                        <button 
-                            onClick={handleSubmitReport}
-                            className="px-4 py-2 bg-white text-indigo-600 rounded-md hover:bg-indigo-50 transition-colors"
+                ) : (
+                    <div className="text-center py-8">
+                        <AcademicCapIcon className="mx-auto h-12 w-12 text-gray-400" />
+                        <p className="mt-2 text-gray-500">No active internship</p>
+                        <button
+                            onClick={() => navigate('/internships/register')}
+                            className="mt-4 px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700"
                         >
-                            <DocumentTextIcon className="h-5 w-5 inline-block mr-2" />
-                            Submit Report
+                            Register for Internship
                         </button>
                     </div>
-                </div>
+                )}
             </div>
 
-            {/* Progress Overview */}
-            <div className="bg-white rounded-lg shadow p-6">
-                <h2 className="text-lg font-semibold mb-4">Overall Progress</h2>
-                <div className="w-full h-4 bg-gray-200 rounded-full overflow-hidden">
-                    <div 
-                        className="h-full bg-indigo-600 rounded-full transition-all duration-500"
-                        style={{ width: `${dashboardData?.overall_progress || 0}%` }}
-                    />
-                </div>
-                <div className="mt-2 text-sm text-gray-600">
-                    {dashboardData?.overall_progress || 0}% Complete
-                </div>
-            </div>
-
-            {/* Stats Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                <StatCard
-                    title="Tasks Completed"
-                    value={`${dashboardData?.completed_tasks || 0}/${dashboardData?.total_tasks || 0}`}
-                    icon={<CheckCircleIcon className="h-6 w-6" />}
-                    className="bg-white"
-                />
-                <StatCard
-                    title="Hours Logged"
-                    value={dashboardData?.hours_logged || 0}
-                    icon={<ClockIcon className="h-6 w-6" />}
-                    className="bg-white"
-                />
-                <StatCard
-                    title="Next Meeting"
-                    value={dashboardData?.next_meeting?.time || 'None'}
-                    icon={<CalendarIcon className="h-6 w-6" />}
-                    description={dashboardData?.next_meeting?.mentor || ''}
-                    className="bg-white"
-                />
-                <StatCard
-                    title="Learning Progress"
-                    value={`${dashboardData?.learning_progress || 0}%`}
-                    icon={<ChartBarIcon className="h-6 w-6" />}
-                    className="bg-white"
-                />
-            </div>
-
-            {/* Quick Actions */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <ActionCard
-                    title="Submit Weekly Report"
-                    description="Document your progress and learnings"
-                    icon={<DocumentTextIcon className="h-5 w-5" />}
-                    onClick={handleSubmitReport}
-                />
-                <ActionCard
-                    title="Log Hours"
-                    description="Record your work time"
-                    icon={<ClockIcon className="h-5 w-5" />}
-                    onClick={handleLogHours}
-                />
-                <ActionCard
-                    title="Learning Resources"
-                    description="Access study materials"
-                    icon={<BookOpenIcon className="h-5 w-5" />}
-                    onClick={handleViewResources}
-                />
-            </div>
-
-            {/* Upcoming Tasks */}
-            <div className="bg-white rounded-lg shadow">
-                <div className="p-6 border-b border-gray-100">
-                    <h2 className="text-lg font-semibold">Upcoming Tasks</h2>
-                </div>
-                <div className="p-6">
+            {/* Reports & Evaluations */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Recent Reports */}
+                <div className="bg-white rounded-lg shadow p-6">
+                    <h2 className="text-lg font-semibold mb-4">Recent Reports</h2>
                     <div className="space-y-4">
-                        {dashboardData?.upcoming_tasks?.map((task, index) => (
-                            <div key={index} className="flex items-center justify-between p-4 hover:bg-gray-50 rounded-lg transition-colors">
-                                <div className="flex items-center gap-4">
-                                    <div className={`p-2 rounded-full ${
-                                        task.priority === 'high' ? 'bg-red-100 text-red-600' :
-                                        task.priority === 'medium' ? 'bg-yellow-100 text-yellow-600' :
-                                        'bg-green-100 text-green-600'
-                                    }`}>
-                                        <CheckCircleIcon className="h-5 w-5" />
-                                    </div>
+                        {data?.reports?.map((report) => (
+                            <div key={report.id} className="flex items-center justify-between border-b pb-4">
+                                <div className="flex items-center space-x-3">
+                                    <DocumentTextIcon className="h-5 w-5 text-gray-400" />
                                     <div>
-                                        <h3 className="font-medium text-gray-900">{task.title}</h3>
-                                        <p className="text-sm text-gray-500">{task.due_date}</p>
+                                        <p className="font-medium">{report.title}</p>
+                                        <p className="text-sm text-gray-500">{report.report_type}</p>
                                     </div>
                                 </div>
-                                <span className={`px-3 py-1 rounded-full text-sm ${
-                                    task.priority === 'high' ? 'bg-red-100 text-red-800' :
-                                    task.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
-                                    'bg-green-100 text-green-800'
+                                <span className={`px-2 py-1 rounded-full text-sm ${
+                                    report.status === 'approved' ? 'bg-green-100 text-green-800' :
+                                    report.status === 'rejected' ? 'bg-red-100 text-red-800' :
+                                    'bg-yellow-100 text-yellow-800'
                                 }`}>
-                                    {task.priority}
+                                    {report.status}
                                 </span>
                             </div>
                         ))}
+                        {(!data?.reports || data.reports.length === 0) && (
+                            <p className="text-center text-gray-500">No reports submitted yet</p>
+                        )}
+                    </div>
+                </div>
+
+                {/* Recent Evaluations */}
+                <div className="bg-white rounded-lg shadow p-6">
+                    <h2 className="text-lg font-semibold mb-4">Recent Evaluations</h2>
+                    <div className="space-y-4">
+                        {data?.evaluations?.map((evaluation) => (
+                            <div key={evaluation.id} className="border-b pb-4">
+                                <div className="flex items-center justify-between mb-2">
+                                    <div className="flex items-center space-x-2">
+                                        <UserIcon className="h-5 w-5 text-gray-400" />
+                                        <span className="font-medium">{evaluation.evaluator_name}</span>
+                                    </div>
+                                    <span className="text-sm text-gray-500">
+                                        {new Date(evaluation.created_at).toLocaleDateString()}
+                                    </span>
+                                </div>
+                                <p className="text-gray-600">{evaluation.comments}</p>
+                            </div>
+                        ))}
+                        {(!data?.evaluations || data.evaluations.length === 0) && (
+                            <p className="text-center text-gray-500">No evaluations received yet</p>
+                        )}
                     </div>
                 </div>
             </div>

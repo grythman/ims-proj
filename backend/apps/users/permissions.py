@@ -25,6 +25,24 @@ class IsUserManagerOrSelf(permissions.BasePermission):
         return request.user.has_perm('users.can_manage_users') or \
                request.user.user_type in ['admin', 'teacher']
 
+class IsAdminUser(permissions.BasePermission):
+    """
+    Permission to only allow admin users to access the view.
+    """
+    def has_permission(self, request, view):
+        return bool(
+            request.user and 
+            request.user.is_authenticated and 
+            request.user.user_type == 'admin'
+        )
+
+    def has_object_permission(self, request, view, obj):
+        return bool(
+            request.user and 
+            request.user.is_authenticated and 
+            request.user.user_type == 'admin'
+        )
+
 class CanManageUsers(permissions.BasePermission):
     """
     Permission to allow only admin and teachers to manage users.

@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.utils import timezone
-from .models import Internship, Task, Agreement, InternshipPlan, Evaluation, PreliminaryReport
+from .models import Internship, Task, Agreement, InternshipPlan, Evaluation, PreliminaryReport, Report
 from apps.users.serializers import UserSerializer
 from apps.companies.serializers import OrganizationSerializer
 from apps.reports.serializers import ReportSerializer
@@ -373,3 +373,21 @@ class TeacherDashboardSerializer(serializers.Serializer):
     active_internships = serializers.IntegerField()
     pending_reports = serializers.IntegerField()
     average_ratings = serializers.DictField()
+
+class ReportSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Report
+        fields = '__all__'
+        read_only_fields = ('student', 'status')
+
+class EvaluationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Evaluation
+        fields = '__all__'
+        read_only_fields = ('evaluator', 'evaluator_type')
+
+class InternshipSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Internship
+        fields = '__all__'
+        read_only_fields = ('student', 'status')

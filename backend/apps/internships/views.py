@@ -4,7 +4,7 @@ from rest_framework.response import Response
 from django.db.models import Count, Q, Avg
 from django.utils import timezone
 from django_filters.rest_framework import DjangoFilterBackend
-from .models import Internship, Task, Agreement, InternshipPlan, PreliminaryReport, Evaluation
+from .models import Internship, Task, Agreement, InternshipPlan, PreliminaryReport, Evaluation, Report
 from .serializers import (
     InternshipSerializer, 
     InternshipCreateSerializer,
@@ -17,12 +17,14 @@ from .serializers import (
     EvaluationSerializer,
     TeacherReportReviewSerializer,
     StudentProgressSerializer,
-    FinalEvaluationSerializer
+    FinalEvaluationSerializer,
+    ReportSerializer
 )
 from .permissions import IsInternshipParticipant, IsAgreementParticipant, IsTeacher
 from apps.notifications.services import NotificationService
 from .services import AgreementService, InternshipPlanService
 from django.shortcuts import get_object_or_404
+from rest_framework.views import APIView
 
 class InternshipViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated, IsInternshipParticipant]
@@ -525,3 +527,115 @@ class TeacherViewSet(viewsets.ModelViewSet):
             ).data
         }
         return Response(evaluations)
+
+class ReportViewSet(viewsets.ModelViewSet):
+    serializer_class = ReportSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.user_type == 'student':
+            return Report.objects.filter(student=user)
+        elif user.user_type in ['teacher', 'mentor']:
+            return Report.objects.filter(
+                internship__in=user.supervised_internships.all() |
+                user.mentored_internships.all()
+            )
+        return Report.objects.none()
+
+    def perform_create(self, serializer):
+        serializer.save(student=self.request.user)
+
+    @action(detail=True, methods=['POST'])
+    def submit(self, request, pk=None):
+        report = self.get_object()
+        report.status = 'submitted'
+        report.save()
+        return Response({'status': 'submitted'})
+
+class EvaluationViewSet(viewsets.ModelViewSet):
+    serializer_class = EvaluationSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.user_type == 'student':
+            return Evaluation.objects.filter(report__student=user)
+        elif user.user_type in ['teacher', 'mentor']:
+            return Evaluation.objects.filter(evaluator=user)
+        return Evaluation.objects.none()
+
+    def perform_create(self, serializer):
+        serializer.save(
+            evaluator=self.request.user,
+            evaluator_type=self.request.user.user_type
+        )
+
+class InternshipViewSet(viewsets.ModelViewSet):
+    serializer_class = InternshipSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.user_type == 'student':
+            return Internship.objects.filter(student=user)
+        elif user.user_type == 'teacher':
+            return Internship.objects.filter(teacher=user)
+        elif user.user_type == 'mentor':
+            return Internship.objects.filter(mentor=user)
+        return Internship.objects.none()
+
+    def perform_create(self, serializer):
+        serializer.save(student=self.request.user)
+
+class StudentDashboardView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        try:
+            student = request.user
+            if student.user_type != 'student':
+                return Response(
+                    {'error': 'Only students can access this dashboard'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+
+            # Get current internship
+            internship = Internship.objects.filter(
+                student=student,
+                status='active'
+            ).first()
+
+            # Get reports
+            reports = Report.objects.filter(
+                student=student
+            ).order_by('-submitted_at')[:5]
+
+            # Get evaluations
+            evaluations = Evaluation.objects.filter(
+                report__student=student
+            ).order_by('-created_at')[:5]
+
+            # Check profile completion
+            profile = {
+                'personal_info': bool(student.first_name and student.last_name),
+                'contact_info': bool(student.email and student.phone),
+                'academic_info': bool(student.student_id and student.major),
+                'profile_picture': bool(student.avatar),
+            }
+
+            data = {
+                'internship': InternshipSerializer(internship).data if internship else None,
+                'reports': ReportSerializer(reports, many=True).data,
+                'evaluations': EvaluationSerializer(evaluations, many=True).data,
+                'profile': profile
+            }
+
+            return Response(data)
+
+        except Exception as e:
+            print(f"Dashboard error: {str(e)}")  # Debug log
+            return Response(
+                {'error': 'Failed to load dashboard data'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )

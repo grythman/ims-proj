@@ -26,7 +26,7 @@ class Report(models.Model):
     student = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
-        related_name='submitted_reports'
+        related_name='general_reports'
     )
     mentor = models.ForeignKey(
         settings.AUTH_USER_MODEL,

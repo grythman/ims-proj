@@ -1,71 +1,82 @@
-import React from 'react';
-import { Outlet } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
-import Sidebar from './Sidebar';
-import Header from './Header';
-import LoadingSpinner from '../common/LoadingSpinner';
+import { useState } from 'react';
+import { Link, Outlet, useNavigate } from 'react-router-dom';
+import { DashboardProvider } from '../../context/DashboardContext';
 
-const DashboardLayout = ({ children }) => {
-    const { user, loading } = useAuth();
+const DashboardLayout = () => {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const navigate = useNavigate();
 
-    if (loading) {
-        return <LoadingSpinner />;
-    }
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    navigate('/login');
+  };
 
-    const getLayoutTheme = () => {
-        switch (user?.user_type) {
-            case 'teacher':
-                return {
-                    bgColor: 'bg-blue-50',
-                    accentColor: 'border-blue-600',
-                    headerGradient: 'from-blue-600 to-blue-800'
-                };
-            case 'mentor':
-                return {
-                    bgColor: 'bg-purple-50',
-                    accentColor: 'border-purple-600',
-                    headerGradient: 'from-purple-600 to-purple-800'
-                };
-            case 'student':
-                return {
-                    bgColor: 'bg-indigo-50',
-                    accentColor: 'border-indigo-600',
-                    headerGradient: 'from-indigo-600 to-indigo-800'
-                };
-            default:
-                return {
-                    bgColor: 'bg-gray-50',
-                    accentColor: 'border-gray-600',
-                    headerGradient: 'from-gray-600 to-gray-800'
-                };
-        }
-    };
+  const navigation = [
+    { name: 'Dashboard', href: '/dashboard', icon: '📊' },
+    { name: 'Users', href: '/dashboard/users', icon: '👥' },
+    { name: 'Companies', href: '/dashboard/companies', icon: '🏢' },
+    { name: 'Settings', href: '/dashboard/settings', icon: '⚙️' },
+  ];
 
-    const theme = getLayoutTheme();
-
-    return (
-        <div className={`min-h-screen ${theme.bgColor}`}>
-            <Header theme={theme} />
-            <div className="flex">
-                <Sidebar theme={theme} />
-                <main className="flex-1 p-8 overflow-auto">
-                    <div className={`max-w-7xl mx-auto border-l-4 ${theme.accentColor} pl-4`}>
-                        {/* Role Label */}
-                        <div className="mb-6">
-                            <span className={`inline-block px-3 py-1 rounded-full text-sm font-medium bg-gradient-to-r ${theme.headerGradient} text-white`}>
-                                {user?.user_type?.charAt(0).toUpperCase() + user?.user_type?.slice(1)} Dashboard
-                            </span>
-                        </div>
-                        
-                        {/* Main Content */}
-                        <div className="bg-white rounded-lg shadow-lg">
-                            {children || <Outlet />}
-                        </div>
-                    </div>
-                </main>
+  return (
+    <DashboardProvider>
+      <div className="min-h-screen bg-gray-100">
+        {/* Sidebar */}
+        <div className={`fixed inset-y-0 left-0 w-64 bg-white shadow-lg transform ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 transition-transform duration-200 ease-in-out`}>
+          <div className="flex flex-col h-full">
+            {/* Logo */}
+            <div className="h-16 flex items-center justify-center border-b">
+              <h1 className="text-xl font-bold text-indigo-600">Your App Name</h1>
             </div>
+
+            {/* Navigation */}
+            <nav className="flex-1 px-4 py-4 space-y-1">
+              {navigation.map((item) => (
+                <Link
+                  key={item.name}
+                  to={item.href}
+                  className="flex items-center px-2 py-2 text-gray-600 rounded-md hover:bg-gray-100"
+                >
+                  <span className="mr-3">{item.icon}</span>
+                  {item.name}
+                </Link>
+              ))}
+            </nav>
+
+            {/* User Menu */}
+            <div className="p-4 border-t">
+              <button
+                onClick={handleLogout}
+                className="w-full flex items-center px-2 py-2 text-red-600 rounded-md hover:bg-red-50"
+              >
+                <span className="mr-3">🚪</span>
+                Logout
+              </button>
+            </div>
+          </div>
         </div>
-    );
+
+        {/* Main Content */}
+        <div className="md:pl-64 flex flex-col flex-1">
+          {/* Top Navigation */}
+          <div className="sticky top-0 z-10 bg-white md:hidden flex items-center justify-between p-4 border-b">
+            <button
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              className="text-gray-500 hover:text-gray-600"
+            >
+              <span className="sr-only">Open sidebar</span>
+              ☰
+            </button>
+          </div>
+
+          {/* Main Content Area */}
+          <main className="flex-1 p-6">
+            <Outlet />
+          </main>
+        </div>
+      </div>
+    </DashboardProvider>
+  );
 };
 
 export default DashboardLayout; 

@@ -1,3 +1,32 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Base styles */
+body {
+  @apply bg-gray-50;
+}
+
+/* Button styles */
+.btn-primary {
+  @apply inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-emerald-600 hover:bg-emerald-700;
+}
+
+.btn-secondary {
+  @apply inline-flex items-center px-6 py-3 border border-gray-300 text-base font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50;
+}
+
+/* Card styles */
+.feature-card {
+  @apply bg-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 p-6;
+}
+
+/* Animation */
+.transition-all {
+  transition: all 0.3s ease-in-out;
+}
+
+/* Custom gradient */
+.gradient-primary {
+  @apply bg-gradient-to-r from-emerald-600 to-emerald-800;
+}

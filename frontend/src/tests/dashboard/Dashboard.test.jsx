@@ -1,6 +1,6 @@
 import React from 'react';
-import { render, screen, waitFor } from '../../utils/test-utils';
 import Dashboard from '../../pages/Dashboard';
+import { render, screen, waitFor } from '../../utils/test-utils';
 
 describe('Dashboard Component', () => {
     test('renders student dashboard when user is student', async () => {

@@ -1,49 +1,35 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import api from '../../services/api';
-import ErrorMessage from '../common/ErrorMessage';
+import { submitReport } from '../../services/api';
 
 const SubmitReportForm = () => {
-    const navigate = useNavigate();
-    const [formData, setFormData] = useState({
-        title: '',
-        content: '',
-        type: 'weekly',
-        file: null
-    });
-    const [error, setError] = useState('');
-    const [loading, setLoading] = useState(false);
+  const [reportData, setReportData] = useState({ title: '', content: '' });
+  const [status, setStatus] = useState('');
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        setLoading(true);
-        setError('');
+  const handleChange = (e) => {
+    setReportData({ ...reportData, [e.target.name]: e.target.value });
+  };
 
-        try {
-            const formDataToSend = new FormData();
-            Object.keys(formData).forEach(key => {
-                formDataToSend.append(key, formData[key]);
-            });
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      await submitReport(reportData);
+      setStatus('Report submitted successfully');
+    } catch (err) {
+      setStatus('Failed to submit report');
+    }
+  };
 
-            await api.post('/reports/', formDataToSend, {
-                headers: {
-                    'Content-Type': 'multipart/form-data',
-                },
-            });
-            navigate('/reports');
-        } catch (err) {
-            setError(err.response?.data?.message || 'Failed to submit report');
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    return (
-        <form onSubmit={handleSubmit} className="space-y-6">
-            {error && <ErrorMessage message={error} />}
-            {/* Form fields */}
-        </form>
-    );
+  return (
+    <div className="submit-report-form">
+      <h2>Submit Report</h2>
+      <form onSubmit={handleSubmit}>
+        <input type="text" name="title" placeholder="Report Title" onChange={handleChange} required />
+        <textarea name="content" placeholder="Report Content" onChange={handleChange} required />
+        <button type="submit">Submit</button>
+      </form>
+      {status && <div className="status">{status}</div>}
+    </div>
+  );
 };
 
 export default SubmitReportForm; 

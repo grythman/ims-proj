@@ -1,21 +1,30 @@
 import axios from 'axios';
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 
 const api = axios.create({
-    baseURL: API_URL,
+    baseURL: `${API_URL}/api`,
     headers: {
         'Content-Type': 'application/json',
     },
+    withCredentials: true
 });
 
 // Request interceptor
 api.interceptors.request.use(
     (config) => {
+        // Add auth token if exists
         const token = localStorage.getItem('access_token');
         if (token) {
             config.headers.Authorization = `Bearer ${token}`;
         }
+
+        // Add CSRF token if needed
+        const csrfToken = document.cookie.match(/csrftoken=([\w-]+)/);
+        if (csrfToken) {
+            config.headers['X-CSRFToken'] = csrfToken[1];
+        }
+
         return config;
     },
     (error) => {
@@ -34,17 +43,19 @@ api.interceptors.response.use(
 
             try {
                 const refreshToken = localStorage.getItem('refresh_token');
-                const response = await axios.post(`${API_URL}/token/refresh/`, {
+                const response = await axios.post(`${API_URL}/api/token/refresh/`, {
                     refresh: refreshToken
                 });
 
-                localStorage.setItem('access_token', response.data.access);
-                api.defaults.headers.common['Authorization'] = `Bearer ${response.data.access}`;
+                const { access } = response.data;
+                localStorage.setItem('access_token', access);
+                api.defaults.headers.common['Authorization'] = `Bearer ${access}`;
 
                 return api(originalRequest);
             } catch (refreshError) {
                 localStorage.removeItem('access_token');
                 localStorage.removeItem('refresh_token');
+                localStorage.removeItem('user');
                 window.location.href = '/login';
                 return Promise.reject(refreshError);
             }
@@ -54,55 +65,75 @@ api.interceptors.response.use(
     }
 );
 
-// HTTP method exports
-export const get = (url, config = {}) => api.get(url, config);
-export const post = (url, data = {}, config = {}) => api.post(url, data, config);
-export const put = (url, data = {}, config = {}) => api.put(url, data, config);
-export const del = (url, config = {}) => api.delete(url, config);
-
 // Auth endpoints
-export const login = async (username, password) => {
+export const login = async (email, password) => {
     try {
-        const response = await api.post('/api/token/', { 
-            username, 
-            password 
+        const response = await api.post('/users/login/', {
+            email,
+            password
         });
-
-        localStorage.setItem('access_token', response.data.access);
-        localStorage.setItem('refresh_token', response.data.refresh);
-
-        api.defaults.headers.common['Authorization'] = `Bearer ${response.data.access}`;
-
-        const userResponse = await api.get('/api/users/me/');
-        return {
-            tokens: response.data,
-            user: userResponse.data
-        };
+        return response.data;
     } catch (error) {
-        console.error('Login error:', error);
-        throw error;
+        console.error('Login error:', error.response?.data);
+        throw new Error(error.response?.data?.error || 'Login failed');
     }
 };
 
 export const register = async (userData) => {
     try {
-        const response = await api.post('/api/users/register/', userData);
-        
-        if (response.data) {
-            const loginResponse = await login(userData.username, userData.password);
-            return loginResponse;
-        }
-        
+        const response = await api.post('/users/register/', userData);
         return response.data;
     } catch (error) {
-        console.error('Registration error:', error);
-        throw error;
+        console.error('Registration error:', error.response?.data);
+        throw new Error(error.response?.data?.message || 'Registration failed');
     }
 };
 
+// User endpoints
 export const getCurrentUser = async () => {
-    const response = await get('/users/me/');
+    const response = await api.get('/users/me/');
     return response.data;
+};
+
+export const updateProfile = async (userData) => {
+    const response = await api.patch('/users/me/', userData);
+    return response.data;
+};
+
+// Dashboard endpoints
+export const getDashboardData = async () => {
+    try {
+        const response = await api.get('/internships/student/dashboard/');
+        return response.data;
+    } catch (error) {
+        console.error('Dashboard error:', error.response?.data);
+        throw new Error(error.response?.data?.message || 'Failed to fetch dashboard data');
+    }
+};
+
+// Report endpoints
+export const submitReport = async (reportData) => {
+    try {
+        const response = await api.post('/reports/submit/', reportData, {
+            headers: {
+                'Content-Type': 'multipart/form-data',
+            },
+        });
+        return response.data;
+    } catch (error) {
+        console.error('Report submission error:', error.response?.data);
+        throw new Error(error.response?.data?.message || 'Failed to submit report');
+    }
+};
+
+export const getReports = async () => {
+    try {
+        const response = await api.get('/reports/');
+        return response.data;
+    } catch (error) {
+        console.error('Get reports error:', error.response?.data);
+        throw new Error(error.response?.data?.message || 'Failed to fetch reports');
+    }
 };
 
 export default api;

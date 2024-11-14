@@ -1,62 +1,80 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import * as api from '../services/api';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import api, { login as apiLogin } from '../services/api';
 
 const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
-    const navigate = useNavigate();
 
-    useEffect(() => {
-        checkAuth();
+    const logout = useCallback(async () => {
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('refresh_token');
+        localStorage.removeItem('user');
+        localStorage.removeItem('isStaff');
+        localStorage.removeItem('isSuperuser');
+        setUser(null);
+        delete api.defaults.headers.common['Authorization'];
     }, []);
 
-    const checkAuth = async () => {
+    const checkAuth = useCallback(async () => {
         try {
             const token = localStorage.getItem('access_token');
-            if (token) {
-                const userData = await api.getCurrentUser();
-                console.log('Current user data:', userData);
-                setUser(userData);
+            const storedUser = localStorage.getItem('user');
+
+            if (token && storedUser) {
+                api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+                const parsedUser = JSON.parse(storedUser);
+                setUser(parsedUser);
+                
+                // Verify token and refresh user data
+                const response = await api.get('/users/me/');
+                setUser(response.data);
+            } else {
+                await logout();
             }
         } catch (error) {
             console.error('Auth check failed:', error);
-            localStorage.removeItem('access_token');
-            localStorage.removeItem('refresh_token');
+            await logout();
         } finally {
             setLoading(false);
         }
-    };
+    }, [logout]);
+
+    useEffect(() => {
+        checkAuth();
+    }, [checkAuth]);
 
     const login = async (username, password) => {
         try {
-            const response = await api.login(username, password);
-            console.log('Login response:', response);
-            setUser(response.user);
-            return response.user;
+            const response = await apiLogin(username, password);
+
+            const { access_token, refresh_token, user: userData } = response;
+
+            localStorage.setItem('access_token', access_token);
+            localStorage.setItem('refresh_token', refresh_token);
+            localStorage.setItem('user', JSON.stringify(userData));
+            localStorage.setItem('isStaff', userData.is_staff || false);
+            localStorage.setItem('isSuperuser', userData.is_superuser || false);
+
+            api.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
+            setUser(userData);
+
+            return userData;
         } catch (error) {
-            console.error('Login failed:', error);
+            console.error('Login error:', error);
             throw error;
         }
-    };
-
-    const logout = () => {
-        localStorage.removeItem('access_token');
-        localStorage.removeItem('refresh_token');
-        setUser(null);
-        navigate('/login');
     };
 
     const value = {
         user,
         loading,
         login,
-        logout
+        logout,
+        isAuthenticated: !!user,
+        checkAuth
     };
-
-    console.log('Current auth state:', { user, loading });
 
     return (
         <AuthContext.Provider value={value}>
