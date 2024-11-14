@@ -101,13 +101,102 @@ export const updateProfile = async (userData) => {
 };
 
 // Dashboard endpoints
-export const getDashboardData = async () => {
+export const getStudentDashboardData = async () => {
     try {
+        // Log auth info for debugging
+        const token = localStorage.getItem('access_token');
+        const user = JSON.parse(localStorage.getItem('user'));
+        console.log('Fetching student dashboard data...');
+        console.log('User type:', user?.user_type);
+        console.log('Token present:', !!token);
+
         const response = await api.get('/internships/student/dashboard/');
+        console.log('Student dashboard response:', response.data);
         return response.data;
     } catch (error) {
-        console.error('Dashboard error:', error.response?.data);
-        throw new Error(error.response?.data?.message || 'Failed to fetch dashboard data');
+        console.error('Student Dashboard error:', {
+            status: error.response?.status,
+            data: error.response?.data,
+            message: error.message
+        });
+        throw new Error(error.response?.data?.message || 'Failed to fetch student dashboard data');
+    }
+};
+
+export const getTeacherDashboardData = async () => {
+    try {
+        const token = localStorage.getItem('access_token');
+        if (!token) {
+            throw new Error('No authentication token found');
+        }
+
+        console.log('Making request to teacher dashboard endpoint...');
+        const response = await api.get('/internships/teacher/dashboard/', {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        
+        console.log('Teacher dashboard response:', response.data);
+        
+        if (!response.data || !response.data.stats) {
+            throw new Error('Invalid response data structure');
+        }
+
+        return response.data;
+    } catch (error) {
+        console.error('Teacher Dashboard error:', {
+            status: error.response?.status,
+            data: error.response?.data,
+            message: error.message
+        });
+        
+        if (error.response?.status === 403) {
+            throw new Error('Access forbidden. Please verify your teacher privileges.');
+        }
+        
+        if (error.response?.status === 401) {
+            throw new Error('Authentication required. Please log in again.');
+        }
+        
+        throw new Error(error.response?.data?.detail || error.message || 'Failed to fetch dashboard data');
+    }
+};
+
+// Report endpoints
+export const submitReport = async (reportData) => {
+    try {
+        const response = await api.post('/internships/reports/submit/', reportData);
+        return response.data;
+    } catch (error) {
+        console.error('Submit report error:', error.response?.data);
+        throw new Error(error.response?.data?.message || 'Failed to submit report');
+    }
+};
+
+export const evaluateReport = async (reportId, evaluationData) => {
+    try {
+        const response = await api.post(`/internships/reports/${reportId}/evaluate/`, evaluationData);
+        return response.data;
+    } catch (error) {
+        console.error('Evaluation error:', error.response?.data);
+        throw new Error(error.response?.data?.message || 'Failed to submit evaluation');
+    }
+};
+
+// Update DashboardContext to handle both student and teacher dashboards
+export const getDashboardData = async (userType) => {
+    try {
+        if (userType === 'teacher') {
+            return await getTeacherDashboardData();
+        } else if (userType === 'student') {
+            return await getStudentDashboardData();
+        } else {
+            throw new Error('Invalid user type');
+        }
+    } catch (error) {
+        console.error('Dashboard error:', error);
+        throw error;
     }
 };
 

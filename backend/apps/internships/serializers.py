@@ -375,10 +375,37 @@ class TeacherDashboardSerializer(serializers.Serializer):
     average_ratings = serializers.DictField()
 
 class ReportSerializer(serializers.ModelSerializer):
+    student_name = serializers.CharField(source='student.get_full_name', read_only=True)
+    student_id = serializers.CharField(source='student.student_id', read_only=True)
+    report_type = serializers.CharField(required=True)
+    submitted_at = serializers.DateTimeField(read_only=True)
+    status = serializers.CharField(read_only=True)
+
     class Meta:
         model = Report
-        fields = '__all__'
-        read_only_fields = ('student', 'status')
+        fields = [
+            'id', 'student_name', 'student_id', 'title', 'content',
+            'report_type', 'submitted_at', 'status', 'feedback'
+        ]
+        read_only_fields = ['student_name', 'student_id', 'submitted_at', 'status']
+
+    def validate_report_type(self, value):
+        if value not in ['weekly', 'monthly', 'final']:
+            raise serializers.ValidationError('Invalid report type')
+        return value
+
+class DashboardSerializer(serializers.Serializer):
+    stats = serializers.DictField(
+        child=serializers.IntegerField(),
+        read_only=True
+    )
+    reports = ReportSerializer(
+        many=True,
+        read_only=True
+    )
+
+    class Meta:
+        fields = ['stats', 'reports']
 
 class EvaluationSerializer(serializers.ModelSerializer):
     class Meta:
@@ -391,3 +418,36 @@ class InternshipSerializer(serializers.ModelSerializer):
         model = Internship
         fields = '__all__'
         read_only_fields = ('student', 'status')
+
+class ReportEvaluationSerializer(serializers.ModelSerializer):
+    evaluator_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Evaluation
+        fields = [
+            'id',
+            'report',
+            'grade',
+            'comments',
+            'feedback',
+            'evaluator',
+            'evaluator_name',
+            'status',
+            'created_at',
+            'updated_at'
+        ]
+        read_only_fields = ['evaluator', 'status', 'created_at', 'updated_at']
+
+    def get_evaluator_name(self, obj):
+        return obj.evaluator.get_full_name() if obj.evaluator else None
+
+    def create(self, validated_data):
+        validated_data['status'] = 'evaluated'
+        evaluation = super().create(validated_data)
+        
+        # Update the associated report status
+        report = evaluation.report
+        report.status = 'evaluated'
+        report.save()
+        
+        return evaluation

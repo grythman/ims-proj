@@ -1,6 +1,7 @@
 import logging
 from django.http import JsonResponse
 from rest_framework import status
+from django.utils.deprecation import MiddlewareMixin
 
 logger = logging.getLogger(__name__)
 
@@ -18,3 +19,13 @@ class ErrorHandlingMiddleware:
                 'error': 'Internal server error',
                 'detail': str(e)
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR) 
+
+class DebugMiddleware(MiddlewareMixin):
+    def process_request(self, request):
+        logger.debug(f"Request: {request.method} {request.path}")
+        logger.debug(f"Headers: {request.headers}")
+        return None
+
+    def process_response(self, request, response):
+        logger.debug(f"Response Status: {response.status_code}")
+        return response 

@@ -7,4 +7,8 @@ class UsersConfig(AppConfig):
     verbose_name = 'Users'
 
     def ready(self):
-        import apps.users.signals  # Import signals when app is ready
+        try:
+            import apps.users.signals
+            print("User signals registered successfully")
+        except Exception as e:
+            print(f"Error registering user signals: {str(e)}")

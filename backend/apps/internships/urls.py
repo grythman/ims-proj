@@ -1,13 +1,14 @@
-from django.urls import path, include
-from rest_framework.routers import DefaultRouter
-from . import views
-
-router = DefaultRouter()
-router.register(r'reports', views.ReportViewSet, basename='report')
-router.register(r'evaluations', views.EvaluationViewSet, basename='evaluation')
-router.register(r'internships', views.InternshipViewSet, basename='internship')
+from django.urls import path
+from .views import TeacherDashboardView, StudentDashboardView, ReportEvaluationView, SubmitReportView, InternshipRegistrationView
 
 urlpatterns = [
-    path('', include(router.urls)),
-    path('student/dashboard/', views.StudentDashboardView.as_view(), name='student-dashboard'),
+    # Teacher specific endpoints
+    path('teacher/dashboard/', TeacherDashboardView.as_view(), name='teacher-dashboard'),
+    path('teacher/pending-reports/', TeacherDashboardView.as_view(), name='teacher-pending-reports'),
+    path('reports/<int:pk>/evaluate/', ReportEvaluationView.as_view(), name='report-evaluation'),
+    
+    # Student specific endpoints
+    path('student/dashboard/', StudentDashboardView.as_view(), name='student-dashboard'),
+    path('reports/submit/', SubmitReportView.as_view(), name='submit-report'),
+    path('register/', InternshipRegistrationView.as_view(), name='internship-registration'),
 ] 

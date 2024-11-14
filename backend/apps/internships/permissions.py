@@ -28,9 +28,12 @@ class IsInternshipParticipant(permissions.BasePermission):
         if request.user.user_type in ['teacher', 'admin']:
             return True
             
-        # Check if user is the student or mentor
-        return (request.user == obj.student or 
-                request.user == obj.mentor)
+        # Check if user is the student, mentor, or teacher of the internship
+        return (
+            request.user == obj.student or
+            request.user == obj.mentor or
+            request.user == obj.teacher
+        )
 
 class CanReviewInternship(permissions.BasePermission):
     """
@@ -93,7 +96,13 @@ class IsTeacher(permissions.BasePermission):
     Custom permission to only allow teachers to access the view.
     """
     def has_permission(self, request, view):
-        return request.user.is_authenticated and request.user.user_type == 'teacher'
+        # Check if user is authenticated and is a teacher
+        return bool(
+            request.user and 
+            request.user.is_authenticated and 
+            hasattr(request.user, 'user_type') and 
+            request.user.user_type == 'teacher'
+        )
 
 class CanReviewReports(permissions.BasePermission):
     """
@@ -108,3 +117,20 @@ class CanGiveFinalEvaluation(permissions.BasePermission):
     """
     def has_permission(self, request, view):
         return request.user.is_authenticated and request.user.user_type == 'teacher'
+
+class IsStudent(permissions.BasePermission):
+    """
+    Custom permission to only allow students to access the view.
+    """
+    def has_permission(self, request, view):
+        # Check if user is authenticated and is a student
+        return bool(
+            request.user and 
+            request.user.is_authenticated and 
+            hasattr(request.user, 'user_type') and 
+            request.user.user_type == 'student'
+        )
+
+    def has_object_permission(self, request, view, obj):
+        # Allow students to only access their own data
+        return obj.student == request.user

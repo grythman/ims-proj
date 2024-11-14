@@ -1,42 +1,42 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { getDashboardData } from '../services/api';
+import { useAuth } from './AuthContext';
 
 const DashboardContext = createContext();
 
 export const DashboardProvider = ({ children }) => {
-    const [dashboardData, setDashboardData] = useState({
-        stats: {
-            totalUsers: 0,
-            totalCompanies: 0,
-            activeProjects: 0,
-        },
-        recentActivity: [],
-        notifications: [],
-    });
+    const { user } = useAuth();
+    const [dashboardData, setDashboardData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
     const fetchDashboardData = async () => {
         try {
             setLoading(true);
-            const data = await getDashboardData();
+            if (!user?.user_type) {
+                throw new Error('User type not set');
+            }
+            const data = await getDashboardData(user.user_type);
             setDashboardData(data);
             setError(null);
         } catch (err) {
-            setError('Failed to load dashboard data');
+            console.error('Dashboard error:', err);
+            setError(err.message || 'Failed to load dashboard data');
         } finally {
             setLoading(false);
         }
     };
 
     useEffect(() => {
-        fetchDashboardData();
-    }, []);
+        if (user) {
+            fetchDashboardData();
+        }
+    }, [user]);
 
     return (
         <DashboardContext.Provider
             value={{
-                ...dashboardData,
+                data: dashboardData,
                 loading,
                 error,
                 refreshData: fetchDashboardData,

@@ -25,7 +25,7 @@ const StudentDashboard = () => {
 
     const fetchData = async () => {
         try {
-            const response = await getDashboardData();
+            const response = await getDashboardData('student');
             setData(response);
             setError(null);
         } catch (error) {

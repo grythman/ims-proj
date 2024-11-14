@@ -5,13 +5,13 @@ from django.core.validators import RegexValidator
 class User(AbstractUser):
     USER_TYPES = (
         ('student', 'Student'),
-        ('mentor', 'Mentor'),
         ('teacher', 'Teacher'),
+        ('mentor', 'Mentor'),
         ('admin', 'Admin'),
     )
 
     user_type = models.CharField(max_length=20, choices=USER_TYPES, default='student')
-    phone = models.CharField(max_length=20, blank=True)
+    phone = models.CharField(max_length=20, blank=True, null=True)
     email_verified = models.BooleanField(default=False)
     last_active = models.DateTimeField(auto_now=True)
     
@@ -32,7 +32,7 @@ class User(AbstractUser):
     )
     
     # Student specific fields
-    student_id = models.CharField(max_length=50, blank=True, null=True)
+    student_id = models.CharField(max_length=20, blank=True, null=True)
     major = models.CharField(max_length=100, blank=True, null=True)
     year_of_study = models.CharField(max_length=10, blank=True, null=True)
     
@@ -48,18 +48,19 @@ class User(AbstractUser):
 
     # Common optional fields
     bio = models.TextField(blank=True)
-    avatar = models.ImageField(upload_to='avatars/', null=True, blank=True)
+    avatar = models.ImageField(upload_to='avatars/', blank=True, null=True)
     skills = models.JSONField(default=dict, blank=True)
 
     class Meta:
         verbose_name = 'User'
         verbose_name_plural = 'Users'
+        db_table = 'auth_user'
 
     def __str__(self):
-        return f"{self.username} ({self.get_user_type_display()})"
+        return f"{self.get_full_name()} ({self.user_type})"
 
     def get_full_name(self):
-        return f"{self.first_name} {self.last_name}"
+        return f"{self.first_name} {self.last_name}" if self.first_name else self.username
 
     @property
     def is_student(self):
@@ -85,6 +86,37 @@ class User(AbstractUser):
                 user=self,
                 **NotificationPreference.get_default_preferences()
             )
+
+    def save(self, *args, **kwargs):
+        is_new = self._state.adding
+        super().save(*args, **kwargs)
+
+        if is_new:
+            # Set up permissions based on user type
+            if self.user_type == 'student':
+                from django.contrib.auth.models import Permission
+                from django.contrib.contenttypes.models import ContentType
+                from apps.internships.models import Report
+
+                # Get content types
+                report_ct = ContentType.objects.get_for_model(Report)
+
+                # Define permissions for students
+                student_permissions = [
+                    Permission.objects.get_or_create(
+                        codename='can_submit_reports',
+                        name='Can submit reports',
+                        content_type=report_ct,
+                    )[0],
+                    Permission.objects.get_or_create(
+                        codename='can_view_own_reports',
+                        name='Can view own reports',
+                        content_type=report_ct,
+                    )[0],
+                ]
+
+                # Assign permissions
+                self.user_permissions.add(*student_permissions)
 
 class NotificationPreference(models.Model):
     user = models.OneToOneField(

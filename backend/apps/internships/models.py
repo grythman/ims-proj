@@ -98,26 +98,30 @@ class Task(models.Model):
         return f"{self.title} - {self.internship.student.username}"
 
 class Evaluation(models.Model):
-    EVALUATOR_TYPES = (
-        ('mentor', 'Mentor'),
-        ('teacher', 'Teacher'),
-    )
+    GRADE_CHOICES = [
+        ('A', 'A'),
+        ('B', 'B'),
+        ('C', 'C'),
+        ('D', 'D'),
+        ('F', 'F'),
+    ]
 
-    report = models.ForeignKey(
-        'Report',
-        on_delete=models.CASCADE,
-        related_name='evaluations',
-        null=True,
-        blank=True
+    EVALUATOR_TYPES = [
+        ('teacher', 'Teacher'),
+        ('mentor', 'Mentor'),
+    ]
+
+    report = models.ForeignKey('Report', on_delete=models.CASCADE, related_name='evaluations')
+    evaluator = models.ForeignKey('users.User', on_delete=models.CASCADE)
+    evaluator_type = models.CharField(
+        max_length=20, 
+        choices=EVALUATOR_TYPES,
+        default='teacher'
     )
-    evaluator = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name='given_evaluations'
-    )
-    evaluator_type = models.CharField(max_length=20, choices=EVALUATOR_TYPES)
-    score = models.IntegerField(null=True, blank=True)
+    grade = models.CharField(max_length=1, choices=GRADE_CHOICES)
     comments = models.TextField()
+    feedback = models.TextField()
+    status = models.CharField(max_length=20, default='pending')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -125,43 +129,66 @@ class Evaluation(models.Model):
         ordering = ['-created_at']
 
     def __str__(self):
-        return f"Evaluation by {self.evaluator.username} ({self.evaluator_type})"
+        return f"Evaluation for {self.report} by {self.evaluator}"
 
-    def clean(self):
-        if self.score is not None and (self.score < 0 or self.score > 100):
-            raise ValidationError('Score must be between 0 and 100')
+    def save(self, *args, **kwargs):
+        # Set evaluator_type based on the evaluator's user_type if not set
+        if not self.evaluator_type and self.evaluator:
+            self.evaluator_type = self.evaluator.user_type
+        super().save(*args, **kwargs)
 
 class Report(models.Model):
-    REPORT_TYPES = (
-        ('preliminary', 'Preliminary'),
-        ('progress', 'Progress'),
-        ('final', 'Final'),
-    )
-    
-    STATUS_CHOICES = (
-        ('draft', 'Draft'),
-        ('submitted', 'Submitted'),
+    REPORT_STATUS = (
+        ('pending', 'Pending'),
         ('under_review', 'Under Review'),
-        ('reviewed', 'Reviewed'),
         ('approved', 'Approved'),
-        ('rejected', 'Rejected'),
+        ('rejected', 'Rejected')
+    )
+
+    REPORT_TYPES = (
+        ('weekly', 'Weekly Report'),
+        ('monthly', 'Monthly Report'),
+        ('final', 'Final Report'),
     )
 
     student = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
-        related_name='internship_reports'
+        related_name='submitted_reports'
     )
-    report_type = models.CharField(max_length=20, choices=REPORT_TYPES)
+    internship = models.ForeignKey(
+        'Internship',
+        on_delete=models.CASCADE,
+        related_name='reports'
+    )
     title = models.CharField(max_length=200)
     content = models.TextField()
-    file_attachment = models.FileField(upload_to='reports/', null=True, blank=True)
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='draft')
+    report_type = models.CharField(
+        max_length=20,
+        choices=REPORT_TYPES,
+        default='weekly'
+    )
+    feedback = models.TextField(blank=True, null=True)
+    status = models.CharField(
+        max_length=20,
+        choices=REPORT_STATUS,
+        default='pending'
+    )
     submitted_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    evaluated_at = models.DateTimeField(null=True, blank=True)
+    evaluated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='evaluated_reports'
+    )
 
     class Meta:
         ordering = ['-submitted_at']
+
+    def __str__(self):
+        return f"{self.get_report_type_display()} by {self.student.get_full_name()} - {self.submitted_at.date()}"
 
 class PreliminaryReport(models.Model):
     STATUS_CHOICES = (

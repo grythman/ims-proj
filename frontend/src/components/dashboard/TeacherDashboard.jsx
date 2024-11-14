@@ -1,203 +1,252 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import api from '../../services/api';
+import { getDashboardData } from '../../services/api';
 import {
-    AcademicCapIcon,
-    ClipboardDocumentCheckIcon,
-    UserGroupIcon,
-    ChartBarIcon,
     DocumentTextIcon,
-    ClockIcon
+    UserIcon,
+    ExclamationCircleIcon,
+    CheckCircleIcon,
+    StarIcon,
+    ChatBubbleLeftRightIcon,
+    ChartBarIcon,
+    UserGroupIcon,
+    ClipboardDocumentCheckIcon,
+    ClockIcon,
+    XCircleIcon
 } from '@heroicons/react/24/outline';
 import LoadingSpinner from '../common/LoadingSpinner';
-import ErrorMessage from '../common/ErrorMessage';
+import { Dialog } from '@headlessui/react';
+import DashboardLayout from '../layout/DashboardLayout';
+import ReportEvaluation from '../reports/ReportEvaluation';
+import TeacherReportsList from '../reports/TeacherReportsList';
+import ReportDetailView from '../reports/ReportDetailView';
 
 const TeacherDashboard = () => {
-    const navigate = useNavigate();
+    const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [stats, setStats] = useState(null);
-    const [pendingReviews, setPendingReviews] = useState([]);
-    const [recentActivities, setRecentActivities] = useState([]);
+    const [selectedReport, setSelectedReport] = useState(null);
+    const [showEvaluationModal, setShowEvaluationModal] = useState(false);
+    const [showReportDetail, setShowReportDetail] = useState(false);
+    const [activeTab, setActiveTab] = useState('pending'); // ['pending', 'under_review', 'evaluated']
+    const navigate = useNavigate();
 
-    useEffect(() => {
-        fetchDashboardData();
-    }, []);
-
-    const fetchDashboardData = async () => {
+    const fetchData = async () => {
         try {
-            const [statsResponse, reviewsResponse, activitiesResponse] = await Promise.all([
-                api.get('/api/internships/teacher/statistics/'),
-                api.get('/api/internships/teacher/pending-reviews/'),
-                api.get('/api/dashboard/activities/')
-            ]);
-
-            setStats(statsResponse.data);
-            setPendingReviews(reviewsResponse.data);
-            setRecentActivities(activitiesResponse.data);
-        } catch (err) {
-            setError('Failed to fetch dashboard data');
-            console.error('Dashboard error:', err);
+            console.log('Fetching teacher dashboard data...');
+            const response = await getDashboardData('teacher');
+            console.log('Teacher Dashboard Response:', response);
+            if (!response || !response.stats) {
+                throw new Error('Invalid dashboard data received');
+            }
+            setData(response);
+            setError(null);
+        } catch (error) {
+            console.error('Error fetching dashboard data:', error);
+            setError(error.message || 'Failed to load dashboard data');
         } finally {
             setLoading(false);
         }
     };
 
-    if (loading) return <LoadingSpinner />;
-    if (error) return <ErrorMessage message={error} />;
+    useEffect(() => {
+        fetchData();
+    }, []);
+
+    const handleEvaluateReport = (report) => {
+        setSelectedReport(report);
+        setShowEvaluationModal(true);
+    };
+
+    const handleViewReport = (report) => {
+        setSelectedReport(report);
+        setShowReportDetail(true);
+    };
+
+    const getFilteredReports = () => {
+        if (!data?.reports) return [];
+        
+        switch (activeTab) {
+            case 'pending':
+                return data.reports.filter(r => r.status === 'pending');
+            case 'under_review':
+                return data.reports.filter(r => r.status === 'under_review');
+            case 'evaluated':
+                return data.reports.filter(r => ['approved', 'rejected'].includes(r.status));
+            default:
+                return data.reports;
+        }
+    };
+
+    const getStatusBadge = (status) => {
+        const badges = {
+            pending: 'bg-yellow-100 text-yellow-800',
+            under_review: 'bg-blue-100 text-blue-800',
+            approved: 'bg-green-100 text-green-800',
+            rejected: 'bg-red-100 text-red-800'
+        };
+        return badges[status] || 'bg-gray-100 text-gray-800';
+    };
+
+    if (loading) return (
+        <DashboardLayout>
+            <div className="flex items-center justify-center min-h-screen">
+                <LoadingSpinner />
+            </div>
+        </DashboardLayout>
+    );
+
+    if (error) return (
+        <DashboardLayout>
+            <div className="text-red-600 text-center p-4">
+                {error}
+            </div>
+        </DashboardLayout>
+    );
 
     return (
-        <div className="space-y-6">
-            {/* Statistics Overview */}
-            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-                <div className="bg-white overflow-hidden shadow rounded-lg">
-                    <div className="p-5">
+        <DashboardLayout>
+            <div className="space-y-6">
+                {/* Statistics Overview */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                    <div className="bg-white rounded-lg shadow p-6">
                         <div className="flex items-center">
-                            <div className="flex-shrink-0">
-                                <UserGroupIcon className="h-6 w-6 text-gray-400" />
+                            <DocumentTextIcon className="h-10 w-10 text-emerald-500" />
+                            <div className="ml-4">
+                                <h3 className="text-lg font-semibold">Pending Reports</h3>
+                                <p className="text-3xl font-bold">{data?.stats?.pending_reports || 0}</p>
                             </div>
-                            <div className="ml-5 w-0 flex-1">
-                                <dl>
-                                    <dt className="text-sm font-medium text-gray-500 truncate">
-                                        Total Students
-                                    </dt>
-                                    <dd className="text-lg font-medium text-gray-900">
-                                        {stats?.total_internships || 0}
-                                    </dd>
-                                </dl>
+                        </div>
+                    </div>
+                    <div className="bg-white rounded-lg shadow p-6">
+                        <div className="flex items-center">
+                            <UserGroupIcon className="h-10 w-10 text-blue-500" />
+                            <div className="ml-4">
+                                <h3 className="text-lg font-semibold">Active Students</h3>
+                                <p className="text-3xl font-bold">{data?.stats?.active_students || 0}</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="bg-white rounded-lg shadow p-6">
+                        <div className="flex items-center">
+                            <ClipboardDocumentCheckIcon className="h-10 w-10 text-purple-500" />
+                            <div className="ml-4">
+                                <h3 className="text-lg font-semibold">Evaluated Reports</h3>
+                                <p className="text-3xl font-bold">{data?.stats?.evaluated_reports || 0}</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="bg-white rounded-lg shadow p-6">
+                        <div className="flex items-center">
+                            <ChartBarIcon className="h-10 w-10 text-yellow-500" />
+                            <div className="ml-4">
+                                <h3 className="text-lg font-semibold">Under Review</h3>
+                                <p className="text-3xl font-bold">{data?.stats?.under_review || 0}</p>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <div className="bg-white overflow-hidden shadow rounded-lg">
-                    <div className="p-5">
-                        <div className="flex items-center">
-                            <div className="flex-shrink-0">
-                                <AcademicCapIcon className="h-6 w-6 text-gray-400" />
-                            </div>
-                            <div className="ml-5 w-0 flex-1">
-                                <dl>
-                                    <dt className="text-sm font-medium text-gray-500 truncate">
-                                        Active Internships
-                                    </dt>
-                                    <dd className="text-lg font-medium text-gray-900">
-                                        {stats?.active_internships || 0}
-                                    </dd>
-                                </dl>
+                {/* Reports Section */}
+                <div className="bg-white rounded-lg shadow">
+                    <div className="p-6">
+                        <div className="flex justify-between items-center mb-6">
+                            <h2 className="text-lg font-semibold">Reports Management</h2>
+                            <div className="flex space-x-2">
+                                <button
+                                    onClick={() => setActiveTab('pending')}
+                                    className={`px-4 py-2 rounded-md ${
+                                        activeTab === 'pending' 
+                                            ? 'bg-emerald-100 text-emerald-800' 
+                                            : 'bg-gray-100 text-gray-600'
+                                    }`}
+                                >
+                                    Pending
+                                </button>
+                                <button
+                                    onClick={() => setActiveTab('under_review')}
+                                    className={`px-4 py-2 rounded-md ${
+                                        activeTab === 'under_review' 
+                                            ? 'bg-blue-100 text-blue-800' 
+                                            : 'bg-gray-100 text-gray-600'
+                                    }`}
+                                >
+                                    Under Review
+                                </button>
+                                <button
+                                    onClick={() => setActiveTab('evaluated')}
+                                    className={`px-4 py-2 rounded-md ${
+                                        activeTab === 'evaluated' 
+                                            ? 'bg-purple-100 text-purple-800' 
+                                            : 'bg-gray-100 text-gray-600'
+                                    }`}
+                                >
+                                    Evaluated
+                                </button>
                             </div>
                         </div>
+                        
+                        <TeacherReportsList
+                            reports={getFilteredReports()}
+                            onEvaluate={handleEvaluateReport}
+                            onView={handleViewReport}
+                        />
                     </div>
                 </div>
 
-                <div className="bg-white overflow-hidden shadow rounded-lg">
-                    <div className="p-5">
-                        <div className="flex items-center">
-                            <div className="flex-shrink-0">
-                                <DocumentTextIcon className="h-6 w-6 text-gray-400" />
-                            </div>
-                            <div className="ml-5 w-0 flex-1">
-                                <dl>
-                                    <dt className="text-sm font-medium text-gray-500 truncate">
-                                        Pending Reviews
-                                    </dt>
-                                    <dd className="text-lg font-medium text-gray-900">
-                                        {stats?.pending_reports || 0}
-                                    </dd>
-                                </dl>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div className="bg-white overflow-hidden shadow rounded-lg">
-                    <div className="p-5">
-                        <div className="flex items-center">
-                            <div className="flex-shrink-0">
-                                <ChartBarIcon className="h-6 w-6 text-gray-400" />
-                            </div>
-                            <div className="ml-5 w-0 flex-1">
-                                <dl>
-                                    <dt className="text-sm font-medium text-gray-500 truncate">
-                                        Average Performance
-                                    </dt>
-                                    <dd className="text-lg font-medium text-gray-900">
-                                        {stats?.average_ratings?.avg_performance?.toFixed(1) || 'N/A'}
-                                    </dd>
-                                </dl>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            {/* Pending Reviews */}
-            <div className="bg-white shadow rounded-lg">
-                <div className="px-4 py-5 sm:px-6">
-                    <h3 className="text-lg leading-6 font-medium text-gray-900">
-                        Pending Reviews
-                    </h3>
-                </div>
-                <div className="border-t border-gray-200">
-                    <ul className="divide-y divide-gray-200">
-                        {pendingReviews.map((review) => (
-                            <li key={review.id} className="px-4 py-4 sm:px-6 hover:bg-gray-50 cursor-pointer"
-                                onClick={() => navigate(`/teacher/reviews/${review.id}`)}>
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center">
-                                        <ClipboardDocumentCheckIcon className="h-5 w-5 text-gray-400" />
-                                        <p className="ml-2 text-sm font-medium text-gray-900">
-                                            {review.student.full_name}
-                                        </p>
-                                    </div>
-                                    <div className="flex items-center">
-                                        <ClockIcon className="h-5 w-5 text-gray-400" />
-                                        <p className="ml-2 text-sm text-gray-500">
-                                            {new Date(review.created_at).toLocaleDateString()}
-                                        </p>
-                                    </div>
+                {/* Recent Activities */}
+                <div className="bg-white rounded-lg shadow p-6">
+                    <h2 className="text-lg font-semibold mb-4">Recent Activities</h2>
+                    <div className="space-y-4">
+                        {data?.recent_activities?.map((activity, index) => (
+                            <div key={index} className="flex items-start space-x-3 border-b pb-4">
+                                {activity.type === 'report_submission' ? (
+                                    <DocumentTextIcon className="h-6 w-6 text-blue-500" />
+                                ) : (
+                                    <ClipboardDocumentCheckIcon className="h-6 w-6 text-green-500" />
+                                )}
+                                <div>
+                                    <p className="text-sm font-medium">
+                                        {activity.type === 'report_submission' 
+                                            ? `${activity.student} submitted a report` 
+                                            : `Evaluated ${activity.student}'s report`}
+                                    </p>
+                                    <p className="text-xs text-gray-500">
+                                        {new Date(activity.date).toLocaleString()}
+                                    </p>
                                 </div>
-                            </li>
+                            </div>
                         ))}
-                        {pendingReviews.length === 0 && (
-                            <li className="px-4 py-4 sm:px-6 text-center text-gray-500">
-                                No pending reviews
-                            </li>
-                        )}
-                    </ul>
+                    </div>
                 </div>
-            </div>
 
-            {/* Recent Activities */}
-            <div className="bg-white shadow rounded-lg">
-                <div className="px-4 py-5 sm:px-6">
-                    <h3 className="text-lg leading-6 font-medium text-gray-900">
-                        Recent Activities
-                    </h3>
-                </div>
-                <div className="border-t border-gray-200">
-                    <ul className="divide-y divide-gray-200">
-                        {recentActivities.map((activity) => (
-                            <li key={activity.id} className="px-4 py-4 sm:px-6">
-                                <div className="flex items-center space-x-4">
-                                    <div className="flex-shrink-0">
-                                        <UserGroupIcon className="h-5 w-5 text-gray-400" />
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <p className="text-sm font-medium text-gray-900">
-                                            {activity.description}
-                                        </p>
-                                        <p className="text-sm text-gray-500">
-                                            {activity.user_name} • {new Date(activity.created_at).toLocaleString()}
-                                        </p>
-                                    </div>
-                                </div>
-                            </li>
-                        ))}
-                    </ul>
-                </div>
+                {/* Modals */}
+                {showReportDetail && selectedReport && (
+                    <ReportDetailView
+                        report={selectedReport}
+                        onClose={() => {
+                            setShowReportDetail(false);
+                            setSelectedReport(null);
+                        }}
+                    />
+                )}
+
+                {showEvaluationModal && selectedReport && (
+                    <ReportEvaluation
+                        report={selectedReport}
+                        onClose={() => {
+                            setShowEvaluationModal(false);
+                            setSelectedReport(null);
+                        }}
+                        onSubmit={() => {
+                            setShowEvaluationModal(false);
+                            setSelectedReport(null);
+                            fetchData(); // Refresh dashboard data
+                        }}
+                    />
+                )}
             </div>
-        </div>
+        </DashboardLayout>
     );
 };
 
