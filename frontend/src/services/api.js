@@ -111,29 +111,4 @@ export const getDashboardData = async () => {
     }
 };
 
-// Report endpoints
-export const submitReport = async (reportData) => {
-    try {
-        const response = await api.post('/reports/submit/', reportData, {
-            headers: {
-                'Content-Type': 'multipart/form-data',
-            },
-        });
-        return response.data;
-    } catch (error) {
-        console.error('Report submission error:', error.response?.data);
-        throw new Error(error.response?.data?.message || 'Failed to submit report');
-    }
-};
-
-export const getReports = async () => {
-    try {
-        const response = await api.get('/reports/');
-        return response.data;
-    } catch (error) {
-        console.error('Get reports error:', error.response?.data);
-        throw new Error(error.response?.data?.message || 'Failed to fetch reports');
-    }
-};
-
 export default api;

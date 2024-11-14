@@ -600,41 +600,37 @@ class StudentDashboardView(APIView):
                     status=status.HTTP_403_FORBIDDEN
                 )
 
-            # Get current internship
-            internship = Internship.objects.filter(
-                student=student,
-                status='active'
-            ).first()
-
-            # Get reports
-            reports = Report.objects.filter(
-                student=student
-            ).order_by('-submitted_at')[:5]
-
-            # Get evaluations
-            evaluations = Evaluation.objects.filter(
-                report__student=student
-            ).order_by('-created_at')[:5]
-
-            # Check profile completion
-            profile = {
-                'personal_info': bool(student.first_name and student.last_name),
-                'contact_info': bool(student.email and student.phone),
-                'academic_info': bool(student.student_id and student.major),
-                'profile_picture': bool(student.avatar),
-            }
+            # Get current internship and preliminary report
+            internship = Internship.objects.filter(student=student).last()
+            preliminary_report = None
+            if internship:
+                preliminary_report = PreliminaryReport.objects.filter(
+                    internship=internship
+                ).last()
 
             data = {
                 'internship': InternshipSerializer(internship).data if internship else None,
-                'reports': ReportSerializer(reports, many=True).data,
-                'evaluations': EvaluationSerializer(evaluations, many=True).data,
-                'profile': profile
+                'preliminary_report': PreliminaryReportSerializer(preliminary_report).data if preliminary_report else None,
+                'reports': ReportSerializer(
+                    Report.objects.filter(student=student).order_by('-submitted_at')[:5],
+                    many=True
+                ).data,
+                'evaluations': EvaluationSerializer(
+                    Evaluation.objects.filter(report__student=student).order_by('-created_at'),
+                    many=True
+                ).data,
+                'profile': {
+                    'personal_info': bool(student.first_name and student.last_name),
+                    'contact_info': bool(student.email and student.phone),
+                    'academic_info': bool(student.student_id and student.major),
+                    'profile_picture': bool(student.avatar),
+                }
             }
 
             return Response(data)
-
+            
         except Exception as e:
-            print(f"Dashboard error: {str(e)}")  # Debug log
+            print(f"Dashboard error: {str(e)}")
             return Response(
                 {'error': 'Failed to load dashboard data'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR

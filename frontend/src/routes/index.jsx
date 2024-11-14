@@ -1,11 +1,11 @@
 import React from 'react';
-import { Navigate, Route, Routes } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
+import Home from '../pages/Home';
 import Login from '../pages/auth/Login';
 import Register from '../pages/auth/Register';
-import Dashboard from '../pages/Dashboard';
-import Home from '../pages/Home';
+import StudentDashboard from '../components/dashboard/StudentDashboard';
 import PrivateRoute from './PrivateRoute';
-import SubmitReport from '../components/reports/SubmitReport';
+import DashboardLayout from '../components/layout/DashboardLayout';
 
 const AppRoutes = () => {
     return (
@@ -14,38 +14,25 @@ const AppRoutes = () => {
             <Route path="/" element={<Home />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
-            <Route path="/forgot-password" element={<div>Forgot Password</div>} />
 
             {/* Protected Routes */}
             <Route path="/dashboard" element={
                 <PrivateRoute>
-                    <Dashboard />
-                </PrivateRoute>
-            } />
-            <Route path="/internships" element={
-                <PrivateRoute>
-                    <Navigate to="/dashboard/internships" replace />
-                </PrivateRoute>
-            } />
-            <Route path="/mentors" element={
-                <PrivateRoute>
-                    <Navigate to="/dashboard/mentors" replace />
-                </PrivateRoute>
-            } />
-            <Route path="/progress" element={
-                <PrivateRoute>
-                    <Navigate to="/dashboard/progress" replace />
-                </PrivateRoute>
-            } />
-            <Route path="/analytics" element={
-                <PrivateRoute>
-                    <Navigate to="/dashboard/analytics" replace />
+                    <StudentDashboard />
                 </PrivateRoute>
             } />
 
-            <Route path="/reports/submit" element={
+            {/* Other dashboard routes */}
+            <Route path="/dashboard/*" element={
                 <PrivateRoute>
-                    <SubmitReport />
+                    <DashboardLayout>
+                        <Routes>
+                            <Route path="reports" element={<div>Reports Page</div>} />
+                            <Route path="internships" element={<div>Internships Page</div>} />
+                            <Route path="evaluations" element={<div>Evaluations Page</div>} />
+                            <Route path="profile" element={<div>Profile Page</div>} />
+                        </Routes>
+                    </DashboardLayout>
                 </PrivateRoute>
             } />
 

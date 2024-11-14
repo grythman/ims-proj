@@ -11,7 +11,7 @@ import {
 } from '@heroicons/react/24/outline';
 
 const Home = () => {
-    const { user } = useAuth();
+    useAuth();
 
     const features = [
         {
