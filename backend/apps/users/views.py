@@ -1,8 +1,8 @@
 from rest_framework import viewsets, permissions, status, generics
-from rest_framework.decorators import action
+from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 from django.db.models import Count, Q
-from .serializers import UserSerializer, UserCreateSerializer, AdminDashboardSerializer, LoginSerializer
+from .serializers import UserSerializer, UserCreateSerializer, AdminDashboardSerializer, LoginSerializer, UserRegistrationSerializer
 from .permissions import IsUserManagerOrSelf, IsAdminUser
 from .models import User
 from apps.internships.models import Internship
@@ -17,6 +17,8 @@ from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
+from django.contrib.auth.models import AbstractUser
+from django.db import models
 
 User = get_user_model()
 
@@ -305,3 +307,15 @@ class LoginView(APIView):
             return Response({
                 'error': 'Invalid credentials. Please try again.'
             }, status=status.HTTP_401_UNAUTHORIZED)
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def register_user(request):
+    serializer = UserRegistrationSerializer(data=request.data)
+    if serializer.is_valid():
+        serializer.save()
+        return Response({
+            'message': 'User registered successfully',
+            'user': serializer.data
+        }, status=status.HTTP_201_CREATED)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

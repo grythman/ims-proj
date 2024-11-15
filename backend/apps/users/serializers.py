@@ -206,3 +206,45 @@ class LogEntrySerializer(serializers.ModelSerializer):
     class Meta:
         model = LogEntry
         fields = ['id', 'user', 'action', 'object_repr', 'action_time']
+
+class UserRegistrationSerializer(serializers.ModelSerializer):
+    password = serializers.CharField(write_only=True, required=True, validators=[validate_password])
+    confirm_password = serializers.CharField(write_only=True, required=True)
+
+    class Meta:
+        model = User
+        fields = ('username', 'email', 'password', 'confirm_password', 'first_name', 
+                 'last_name', 'role', 'student_id', 'department')
+        extra_kwargs = {
+            'first_name': {'required': True},
+            'last_name': {'required': True},
+            'email': {'required': True}
+        }
+
+    def validate(self, attrs):
+        if attrs['password'] != attrs.pop('confirm_password'):
+            raise serializers.ValidationError({"password": "Password fields didn't match."})
+        
+        if User.objects.filter(email=attrs['email']).exists():
+            raise serializers.ValidationError({"email": "User with this email already exists."})
+
+        if attrs['role'] == 'student' and not attrs.get('student_id'):
+            raise serializers.ValidationError({"student_id": "Student ID is required for student role."})
+
+        return attrs
+
+    def create(self, validated_data):
+        user = User.objects.create_user(
+            username=validated_data['username'],
+            email=validated_data['email'],
+            first_name=validated_data['first_name'],
+            last_name=validated_data['last_name'],
+            role=validated_data['role'],
+            student_id=validated_data.get('student_id'),
+            department=validated_data.get('department')
+        )
+
+        user.set_password(validated_data['password'])
+        user.save()
+
+        return user

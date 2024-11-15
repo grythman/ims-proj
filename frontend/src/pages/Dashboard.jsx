@@ -5,7 +5,7 @@ import LoadingSpinner from '../components/common/LoadingSpinner';
 import MentorDashboard from '../components/dashboard/MentorDashboard';
 import StudentDashboard from '../components/dashboard/StudentDashboard';
 import TeacherDashboard from '../components/dashboard/TeacherDashboard';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../context/AuthContext1';
 
 const Dashboard = () => {
     const { user, loading } = useAuth();
