@@ -1,18 +1,16 @@
-import {
-    AcademicCapIcon,
-    ArrowRightIcon,
-    ChartBarIcon,
-    CheckCircleIcon,
-    ClipboardDocumentCheckIcon,
-    UserGroupIcon
-} from '@heroicons/react/24/outline';
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext1';
+import Button from '../components/UI/Button';
+import {
+    AcademicCapIcon,
+    UserGroupIcon,
+    ClipboardDocumentCheckIcon,
+    ChartBarIcon,
+    ArrowRightIcon,
+    CheckCircleIcon
+} from '@heroicons/react/24/outline';
 
 const Home = () => {
-    useAuth();
-
     const features = [
         {
             title: "Internship Management",
@@ -96,19 +94,19 @@ const Home = () => {
                                 Internship Management System
                             </h1>
                             <p className="mt-6 text-xl text-emerald-100 max-w-3xl mx-auto">
-                                Streamline your internship program with our comprehensive platform.
+                                Streamline your internship program with our comprehensive platform. 
                                 Connect mentors with students, track progress, and ensure success.
                             </p>
                             <div className="mt-10 flex justify-center gap-4">
-                                <Link
-                                    to="/register"
+                                <Link 
+                                    to="/register" 
                                     className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-emerald-700 bg-white hover:bg-emerald-50"
                                 >
                                     Get Started
                                     <ArrowRightIcon className="ml-2 h-5 w-5" />
                                 </Link>
-                                <Link
-                                    to="/login"
+                                <Link 
+                                    to="/login" 
                                     className="inline-flex items-center px-6 py-3 border border-white text-base font-medium rounded-md text-white hover:bg-emerald-700"
                                 >
                                     Sign In

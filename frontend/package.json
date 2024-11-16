@@ -1,33 +1,28 @@
 {
-  "name": "frontend",
+  "name": "ims-proj-frontend",
   "version": "0.1.0",
   "private": true,
   "dependencies": {
-    "@emotion/react": "^11.13.3",
-    "@emotion/styled": "^11.13.0",
-    "@headlessui/react": "^2.2.0",
     "@heroicons/react": "^2.0.18",
-    "@mui/icons-material": "^6.1.7",
-    "@mui/lab": "^5.0.0-alpha.x",
-    "@mui/material": "^6.1.7",
-    "@neondatabase/serverless": "^0.10.3",
-    "@tailwindcss/forms": "^0.5.7",
-    "@testing-library/jest-dom": "^5.17.0",
+    "@testing-library/jest-dom": "^5.16.5",
     "@testing-library/react": "^13.4.0",
     "@testing-library/user-event": "^13.5.0",
-    "@vercel/postgres": "^0.10.0",
-    "axios": "^1.6.2",
+    "axios": "^0.27.2",
+    "clsx": "^2.0.0",
+    "framer-motion": "^10.18.0",
+    "lucide-react": "^0.241.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "react-router-dom": "^6.21.0",
+    "react-hot-toast": "^2.4.1",
+    "react-router-dom": "^6.28.0",
     "react-scripts": "5.0.1",
-    "recharts": "^2.13.3",
+    "tailwindcss": "^3.3.2",
     "web-vitals": "^2.1.4"
   },
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
-    "test": "react-scripts test --transformIgnorePatterns \"node_modules/(?!axios)/\"",
+    "test": "react-scripts test",
     "eject": "react-scripts eject"
   },
   "eslintConfig": {
@@ -50,9 +45,7 @@
   },
   "devDependencies": {
     "@babel/plugin-proposal-private-property-in-object": "^7.21.11",
-    "autoprefixer": "^10.4.20",
-    "postcss": "^8.4.49",
-    "postcss-import": "^16.1.0",
-    "tailwindcss": "^3.4.15"
+    "autoprefixer": "^10.4.14",
+    "postcss": "^8.4.24"
   }
 }

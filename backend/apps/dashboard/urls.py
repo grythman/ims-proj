@@ -1,12 +1,10 @@
-from django.urls import path, include
-from rest_framework.routers import DefaultRouter
+from django.urls import path
 from . import views
 
-router = DefaultRouter()
-router.register(r'stats', views.DashboardViewSet, basename='dashboard')
+app_name = 'dashboard'
 
 urlpatterns = [
-    path('metrics/', views.dashboard_metrics, name='dashboard-metrics'),
-    path('activities/', views.dashboard_activities, name='dashboard-activities'),
-    path('', include(router.urls)),
+    path('', views.DashboardView.as_view(), name='dashboard'),
+    path('stats/', views.StatsView.as_view(), name='stats'),
+    # Add other dashboard-specific URLs here
 ] 

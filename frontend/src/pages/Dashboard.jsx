@@ -2,10 +2,10 @@ import React from 'react';
 import { Navigate } from 'react-router-dom';
 import ErrorMessage from '../components/common/ErrorMessage';
 import LoadingSpinner from '../components/common/LoadingSpinner';
-import MentorDashboard from '../components/dashboard/MentorDashboard';
-import StudentDashboard from '../components/dashboard/StudentDashboard';
-import TeacherDashboard from '../components/dashboard/TeacherDashboard';
-import { useAuth } from '../context/AuthContext1';
+import MentorDashboard from '../components/Dashboard/MentorDashboard';
+import StudentDashboard from '../components/Dashboard/StudentDashboard';
+import TeacherDashboard from '../components/Dashboard/TeacherDashboard';
+import { useAuth } from '../context/AuthContext';
 
 const Dashboard = () => {
     const { user, loading } = useAuth();

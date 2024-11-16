@@ -1,43 +1,26 @@
-import React, { Suspense } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { ThemeProvider } from '@mui/material/styles';
-import CssBaseline from '@mui/material/CssBaseline';
-import { AuthProvider } from './context/AuthContext';
-import { publicRoutes, privateRoutes } from './routes';
-import LoadingSpinner from './components/common/LoadingSpinner';
-import ErrorBoundary from './components/common/ErrorBoundary';
-import theme from './theme';
+import React from 'react'
+import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom'
+import StudentDashboard from './pages/dashboard/StudentDashboard'
+
+// Placeholder components for other routes
+const Reports = () => <div>Reports Page</div>
+const Evaluations = () => <div>Evaluations Page</div>
+const Settings = () => <div>Settings Page</div>
 
 const App = () => {
   return (
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
-      <ErrorBoundary>
-        <AuthProvider>
-          <Router>
-            <Suspense fallback={<LoadingSpinner />}>
-              <Routes>
-                {publicRoutes.map((route) => (
-                  <Route
-                    key={route.path}
-                    path={route.path}
-                    element={<route.component />}
-                  />
-                ))}
-                {privateRoutes.map((route) => (
-                  <Route
-                    key={route.path}
-                    path={route.path}
-                    element={<route.component />}
-                  />
-                ))}
-              </Routes>
-            </Suspense>
-          </Router>
-        </AuthProvider>
-      </ErrorBoundary>
-    </ThemeProvider>
-  );
-};
+    <Router>
+      <div className="min-h-screen bg-background font-sans antialiased">
+        <Routes>
+          <Route path="/" element={<Navigate replace to="/dashboard" />} />
+          <Route path="/dashboard" element={<StudentDashboard />} />
+          <Route path="/reports" element={<Reports />} />
+          <Route path="/evaluations" element={<Evaluations />} />
+          <Route path="/settings" element={<Settings />} />
+        </Routes>
+      </div>
+    </Router>
+  )
+}
 
-export default App; 
+export default App

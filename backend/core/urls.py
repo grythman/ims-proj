@@ -26,21 +26,19 @@ from rest_framework_simplejwt.views import (
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    
-    # Authentication endpoints
+    # JWT Authentication endpoints
     path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('api/token/verify/', TokenVerifyView.as_view(), name='token_verify'),
-    
-    # API endpoints
+    # Your apps' URLs
     path('api/users/', include('apps.users.urls')),
-    path('api/reports/', include('apps.reports.urls')),
-    path('api/dashboard/', include('apps.dashboard.urls')),
-    path('api/internships/', include('apps.internships.urls')),
     path('api/companies/', include('apps.companies.urls')),
+    path('api/internships/', include('apps.internships.urls')),
     path('api/notifications/', include('apps.notifications.urls')),
+    path('api/dashboard/', include('apps.dashboard.urls')),
+    path('api/reports/', include('apps.reports.urls')),
 ]
 
-# Serve media files in development
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+    urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

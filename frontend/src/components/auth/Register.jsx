@@ -1,22 +1,9 @@
 import React, { useState } from 'react';
-import {
-  Box,
-  Container,
-  Paper,
-  Typography,
-  TextField,
-  Button,
-  Grid,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  Alert,
-  CircularProgress,
-  Link
-} from '@mui/material';
-import { Link as RouterLink, useNavigate } from 'react-router-dom';
-import { registerUser } from '../../services/api';
+import { useNavigate } from 'react-router-dom';
+import { register } from '../../services/api';
+import Input from '../UI/Input';
+import Button from '../UI/Button';
+import { toast } from 'react-toastify';
 
 const Register = () => {
   const [formData, setFormData] = useState({
@@ -26,189 +13,247 @@ const Register = () => {
     confirmPassword: '',
     firstName: '',
     lastName: '',
-    role: '',
+    userType: 'student',
+    // Student specific fields
     studentId: '',
-    department: ''
+    major: '',
+    yearOfStudy: '',
+    // Mentor specific fields
+    company: '',
+    position: '',
+    // Teacher specific fields
+    departmentName: '',
+    facultyId: '',
+    subjectArea: ''
   });
-  const [error, setError] = useState('');
+
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    // Basic validation
+    setLoading(true);
+
     if (formData.password !== formData.confirmPassword) {
-      setError('Passwords do not match');
+      toast.error('Passwords do not match');
+      setLoading(false);
       return;
     }
 
-    setLoading(true);
-    setError('');
-
     try {
-      console.log('Submitting registration data:', formData); // Debug log
-
-      const response = await registerUser(formData);
-      console.log('Registration response:', response.data); // Debug log
-
-      // Store token if provided
-      if (response.data.token) {
-        localStorage.setItem('token', response.data.token);
-      }
-
-      navigate('/login', { 
-        state: { 
-          message: 'Registration successful! Please login.',
-          severity: 'success'
-        } 
-      });
+      await register(formData);
+      toast.success('Registration successful! Please login.');
+      navigate('/login');
     } catch (error) {
-      console.error('Registration error:', error.response?.data || error); // Debug log
-      
-      setError(
-        error.response?.data?.message || 
-        error.response?.data?.error || 
-        'Registration failed. Please try again.'
-      );
+      console.error('Registration error:', error);
+      toast.error(error.response?.data?.message || 'Registration failed. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
+  const renderUserTypeFields = () => {
+    switch (formData.userType) {
+      case 'student':
+        return (
+          <>
+            <Input
+              label="Student ID"
+              name="studentId"
+              value={formData.studentId}
+              onChange={handleChange}
+              required
+            />
+            <Input
+              label="Major"
+              name="major"
+              value={formData.major}
+              onChange={handleChange}
+              required
+            />
+            <Input
+              label="Year of Study"
+              type="number"
+              name="yearOfStudy"
+              value={formData.yearOfStudy}
+              onChange={handleChange}
+              required
+            />
+          </>
+        );
+      case 'mentor':
+        return (
+          <>
+            <Input
+              label="Company"
+              name="company"
+              value={formData.company}
+              onChange={handleChange}
+              required
+            />
+            <Input
+              label="Position"
+              name="position"
+              value={formData.position}
+              onChange={handleChange}
+              required
+            />
+          </>
+        );
+      case 'teacher':
+        return (
+          <>
+            <Input
+              label="Department Name"
+              name="departmentName"
+              value={formData.departmentName}
+              onChange={handleChange}
+              required
+            />
+            <Input
+              label="Faculty ID"
+              name="facultyId"
+              value={formData.facultyId}
+              onChange={handleChange}
+              required
+            />
+            <Input
+              label="Subject Area"
+              name="subjectArea"
+              value={formData.subjectArea}
+              onChange={handleChange}
+              required
+            />
+          </>
+        );
+      default:
+        return null;
+    }
+  };
+
   return (
-    <Container maxWidth="sm">
-      <Paper elevation={3} sx={{ p: 4 }}>
-        <Typography variant="h4" gutterBottom>
-          Register
-        </Typography>
-        <form onSubmit={handleSubmit}>
-          <Grid container spacing={2}>
-            <Grid item xs={12}>
-              <TextField
-                label="Username"
-                name="username"
-                value={formData.username}
+    <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+      <div className="sm:mx-auto sm:w-full sm:max-w-md">
+        <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
+          Create your account
+        </h2>
+      </div>
+
+      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
+        <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
+          <form className="space-y-6" onSubmit={handleSubmit}>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">
+                User Type
+              </label>
+              <select
+                name="userType"
+                value={formData.userType}
                 onChange={handleChange}
-                fullWidth
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <TextField
-                label="Email"
-                name="email"
-                value={formData.email}
-                onChange={handleChange}
-                fullWidth
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <TextField
-                label="Password"
-                name="password"
-                type="password"
-                value={formData.password}
-                onChange={handleChange}
-                fullWidth
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <TextField
-                label="Confirm Password"
-                name="confirmPassword"
-                type="password"
-                value={formData.confirmPassword}
-                onChange={handleChange}
-                fullWidth
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <TextField
-                label="First Name"
-                name="firstName"
-                value={formData.firstName}
-                onChange={handleChange}
-                fullWidth
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <TextField
-                label="Last Name"
-                name="lastName"
-                value={formData.lastName}
-                onChange={handleChange}
-                fullWidth
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <FormControl fullWidth>
-                <InputLabel id="role-label">Role</InputLabel>
-                <Select
-                  labelId="role-label"
-                  id="role"
-                  name="role"
-                  value={formData.role}
-                  label="Role"
-                  onChange={handleChange}
-                >
-                  <MenuItem value="student">Student</MenuItem>
-                  <MenuItem value="teacher">Teacher</MenuItem>
-                  <MenuItem value="mentor">Mentor</MenuItem>
-                  <MenuItem value="admin">Admin</MenuItem>
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid item xs={12}>
-              <TextField
-                label="Student ID"
-                name="studentId"
-                value={formData.studentId}
-                onChange={handleChange}
-                fullWidth
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <TextField
-                label="Department"
-                name="department"
-                value={formData.department}
-                onChange={handleChange}
-                fullWidth
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <Button
-                type="submit"
-                variant="contained"
-                color="primary"
-                fullWidth
-                disabled={loading}
+                className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm rounded-md"
               >
-                {loading ? (
-                  <CircularProgress size={20} color="inherit" />
-                ) : (
-                  'Register'
-                )}
-              </Button>
-            </Grid>
-            {error && (
-              <Grid item xs={12}>
-                <Alert severity="error">{error}</Alert>
-              </Grid>
-            )}
-          </Grid>
-        </form>
-        <Typography variant="body1" align="center" mt={2}>
-          Already have an account? <Link component={RouterLink} to="/login">Login</Link>
-        </Typography>
-      </Paper>
-    </Container>
+                <option value="student">Student</option>
+                <option value="mentor">Mentor</option>
+                <option value="teacher">Teacher</option>
+              </select>
+            </div>
+
+            <Input
+              label="Username"
+              name="username"
+              value={formData.username}
+              onChange={handleChange}
+              required
+            />
+
+            <Input
+              label="Email"
+              type="email"
+              name="email"
+              value={formData.email}
+              onChange={handleChange}
+              required
+            />
+
+            <Input
+              label="First Name"
+              name="firstName"
+              value={formData.firstName}
+              onChange={handleChange}
+              required
+            />
+
+            <Input
+              label="Last Name"
+              name="lastName"
+              value={formData.lastName}
+              onChange={handleChange}
+              required
+            />
+
+            <Input
+              label="Password"
+              type="password"
+              name="password"
+              value={formData.password}
+              onChange={handleChange}
+              required
+            />
+
+            <Input
+              label="Confirm Password"
+              type="password"
+              name="confirmPassword"
+              value={formData.confirmPassword}
+              onChange={handleChange}
+              required
+            />
+
+            {renderUserTypeFields()}
+
+            <Button
+              type="submit"
+              variant="primary"
+              className="w-full"
+              loading={loading}
+            >
+              Register
+            </Button>
+          </form>
+
+          <div className="mt-6">
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-gray-300" />
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="px-2 bg-white text-gray-500">
+                  Already have an account?
+                </span>
+              </div>
+            </div>
+
+            <div className="mt-6">
+              <a
+                href="/login"
+                className="w-full inline-flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
+              >
+                Sign in
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   );
-}; 
+};
+
+export default Register; 

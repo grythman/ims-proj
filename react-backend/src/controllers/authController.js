@@ -4,7 +4,7 @@ const jwt = require('jsonwebtoken');
 const { check, validationResult } = require('express-validator');
 
 // Validation rules
-exports.validateRegister = [
+const validateRegister = [
     check('username')
         .trim()
         .isLength({ min: 3 })
@@ -28,7 +28,7 @@ exports.validateRegister = [
         .withMessage('Invalid role specified')
 ];
 
-exports.validateLogin = [
+const validateLogin = [
     check('email')
         .isEmail()
         .withMessage('Please provide a valid email'),
@@ -213,78 +213,46 @@ const register = async (req, res) => {
   }
 };
 
-exports.login = async (req, res) => {
-    try {
-        // Validate request
-        const errors = validationResult(req);
-        if (!errors.isEmpty()) {
-            return res.status(400).json({
-                success: false,
-                errors: errors.array()
-            });
-        }
+// Login controller function
+const login = async (req, res) => {
+  try {
+    const { email, password } = req.body;
 
-        const { email, password } = req.body;
-
-        // Find user
-        const user = await User.findOne({ email })
-            .select('+password');
-
-        if (!user) {
-            return res.status(401).json({
-                success: false,
-                message: 'Invalid credentials'
-            });
-        }
-
-        // Check password
-        const isMatch = await bcrypt.compare(password, user.password);
-        if (!isMatch) {
-            return res.status(401).json({
-                success: false,
-                message: 'Invalid credentials'
-            });
-        }
-
-        // Check if account is active
-        if (!user.isActive) {
-            return res.status(401).json({
-                success: false,
-                message: 'Account is deactivated'
-            });
-        }
-
-        // Generate token
-        const token = generateToken(user._id);
-
-        // Update last login
-        user.lastLogin = new Date();
-        await user.save();
-
-        // Remove password from response
-        const userResponse = user.toObject();
-        delete userResponse.password;
-
-        res.json({
-            success: true,
-            message: 'Login successful',
-            data: {
-                user: userResponse,
-                token
-            }
-        });
-
-    } catch (error) {
-        console.error('Login Error:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Login failed',
-            error: process.env.NODE_ENV === 'development' ? error.message : undefined
-        });
+    // Check if user exists
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(401).json({ message: 'Invalid credentials' });
     }
+
+    // Verify password
+    const isValidPassword = await bcrypt.compare(password, user.password);
+    if (!isValidPassword) {
+      return res.status(401).json({ message: 'Invalid credentials' });
+    }
+
+    // Generate JWT token
+    const token = jwt.sign(
+      { userId: user._id, email: user.email },
+      process.env.JWT_SECRET,
+      { expiresIn: '24h' }
+    );
+
+    res.status(200).json({
+      message: 'Login successful',
+      token,
+      user: {
+        id: user._id,
+        email: user.email,
+        name: user.name
+      }
+    });
+  } catch (error) {
+    console.error('Login error:', error);
+    res.status(500).json({ message: 'Server error during login' });
+  }
 };
 
-exports.logout = async (req, res) => {
+const logout = async (req, res) => {
     try {
         // Update last active timestamp
         await User.findByIdAndUpdate(req.user._id, {
@@ -304,7 +272,7 @@ exports.logout = async (req, res) => {
     }
 };
 
-exports.getProfile = async (req, res) => {
+const getProfile = async (req, res) => {
     try {
         const user = await User.findById(req.user._id)
             .select('-password');
@@ -323,7 +291,10 @@ exports.getProfile = async (req, res) => {
 };
 
 module.exports = {
-  login,
-  register,
-  getProfile
+    login,
+    register,
+    logout,
+    getProfile,
+    validateRegister,
+    validateLogin
 }; 
