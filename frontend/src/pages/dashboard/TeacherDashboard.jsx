@@ -14,6 +14,8 @@ import { Button } from '../../components/UI/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/UI/Card';
 import { toast } from 'react-hot-toast';
 import teacherApi from '../../services/teacherApi';
+import MonitorMentorEvaluation from '../../components/teacher/MonitorMentorEvaluation';
+import MonitorStudentProgress from '../../components/teacher/MonitorStudentProgress';
 
 // Create StatCard component for reuse
 const StatCard = ({ title, value, icon: Icon, color, gradient }) => (
@@ -176,6 +178,24 @@ const TeacherDashboard = () => {
             />
           ))}
         </div>
+      </div>
+
+      {/* Mentor Evaluations Section */}
+      <div className="bg-white rounded-lg shadow-sm p-6">
+        <div className="mb-6">
+          <h2 className="text-lg font-semibold text-gray-900">Mentor Evaluations</h2>
+          <p className="text-sm text-gray-500">Monitor and review mentor evaluations</p>
+        </div>
+        <MonitorMentorEvaluation />
+      </div>
+
+      {/* Student Progress Section */}
+      <div className="bg-white rounded-lg shadow-sm p-6">
+        <div className="mb-6">
+          <h2 className="text-lg font-semibold text-gray-900">Student Progress</h2>
+          <p className="text-sm text-gray-500">Monitor and track student internship progress</p>
+        </div>
+        <MonitorStudentProgress />
       </div>
 
       {/* Quick Actions */}

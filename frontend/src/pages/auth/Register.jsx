@@ -2,8 +2,8 @@ import React, { useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import { register } from '../../services/api';
-import Button from '../../components/UI/Button';
-import Input from '../../components/UI/Input';
+import Button from '../components/UI/Button';
+import Input from '../components/UI/Input';
 
 const Register = () => {
   const [formData, setFormData] = useState({
@@ -44,7 +44,7 @@ const Register = () => {
     e.preventDefault();
     setLoading(true);
 
-    if (formData.password !== formData.confirm_password) {
+    if (formData.password !== formData.password_confirm) {
       toast.error('Passwords do not match');
       setLoading(false);
       return;
@@ -53,6 +53,7 @@ const Register = () => {
     try {
       const dataToSend = {
         ...formData,
+        password_confirm: formData.confirm_password,
         year_of_study: formData.year_of_study ? parseInt(formData.year_of_study) : null,
         expertise: Array.isArray(formData.expertise) ? formData.expertise : []
       };
@@ -226,8 +227,8 @@ const Register = () => {
             <Input
               label="Confirm Password"
               type="password"
-              name="confirm_password"
-              value={formData.confirm_password}
+              name="password_confirm"
+              value={formData.password_confirm}
               onChange={handleChange}
               required
             />
