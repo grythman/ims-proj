@@ -1,21 +1,24 @@
 import React, { useState, useEffect } from 'react'
-import axios from 'axios'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../UI/Card'
 import { Button } from '../UI/Button'
-import { FileCheck } from 'lucide-react'
+import { FileCheck, AlertCircle } from 'lucide-react'
+import { toast } from 'react-hot-toast'
+import studentApi from '../../services/studentApi'
 
 const PreliminaryReportCheck = () => {
   const [status, setStatus] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
     const fetchStatus = async () => {
       try {
-        const response = await axios.get('/api/student/preliminary-report-status')
-        setStatus(response.data.status)
+        const data = await studentApi.reports.getPreliminaryStatus()
+        setStatus(data.status)
       } catch (err) {
         setError('Failed to load preliminary report status')
+        toast.error('Failed to load preliminary report status')
       } finally {
         setLoading(false)
       }
@@ -23,6 +26,36 @@ const PreliminaryReportCheck = () => {
 
     fetchStatus()
   }, [])
+
+  const handleSubmit = async () => {
+    setSubmitting(true)
+    try {
+      await studentApi.reports.submitPreliminary({
+        // Add any necessary data here
+      })
+      toast.success('Preliminary report submitted successfully')
+      // Refresh status
+      const newStatus = await studentApi.reports.getPreliminaryStatus()
+      setStatus(newStatus.status)
+    } catch (err) {
+      toast.error('Failed to submit preliminary report')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const getStatusColor = (status) => {
+    switch (status?.toLowerCase()) {
+      case 'approved':
+        return 'text-green-600 bg-green-100'
+      case 'pending':
+        return 'text-yellow-600 bg-yellow-100'
+      case 'rejected':
+        return 'text-red-600 bg-red-100'
+      default:
+        return 'text-gray-600 bg-gray-100'
+    }
+  }
 
   return (
     <Card className="group relative overflow-hidden">
@@ -32,22 +65,49 @@ const PreliminaryReportCheck = () => {
           <FileCheck className="h-6 w-6 text-blue-500" />
         </div>
         <CardTitle className="mt-4">Preliminary Report Check</CardTitle>
-        <CardDescription>Check preliminary report status</CardDescription>
+        <CardDescription>Check and submit your preliminary report</CardDescription>
       </CardHeader>
       <CardContent>
         {loading ? (
-          <p>Loading status...</p>
+          <div className="animate-pulse space-y-4">
+            <div className="h-4 bg-gray-200 rounded w-1/4"></div>
+            <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+          </div>
         ) : error ? (
-          <p className="text-red-500">{error}</p>
+          <div className="flex items-center space-x-2 text-red-500">
+            <AlertCircle className="h-5 w-5" />
+            <p>{error}</p>
+          </div>
         ) : (
-          <p className="font-semibold mb-4">Status: {status}</p>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-gray-500">Current Status</span>
+              <span className={`px-2 py-1 rounded-full text-sm font-medium ${getStatusColor(status)}`}>
+                {status || 'Not Submitted'}
+              </span>
+            </div>
+
+            {status !== 'approved' && (
+              <Button
+                variant="secondary"
+                className="w-full bg-blue-500/10 hover:bg-blue-500/20 text-blue-500"
+                onClick={handleSubmit}
+                disabled={submitting || status === 'pending'}
+                loading={submitting}
+              >
+                {submitting ? 'Submitting...' : 'Submit Preliminary Report'}
+              </Button>
+            )}
+
+            {status === 'rejected' && (
+              <div className="p-3 bg-red-50 rounded-md">
+                <p className="text-sm text-red-600">
+                  Your preliminary report was rejected. Please review the feedback and submit again.
+                </p>
+              </div>
+            )}
+          </div>
         )}
-        <Button
-          variant="secondary"
-          className="w-full bg-blue-500/10 hover:bg-blue-500/20 text-blue-500"
-        >
-          View Details
-        </Button>
       </CardContent>
     </Card>
   )

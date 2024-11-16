@@ -11,10 +11,15 @@ import {
   Users
 } from 'lucide-react'
 import Button from '../../components/UI/Button'
-import Card, { CardContent, CardHeader, CardTitle } from '../../components/UI/Card'
+import { Card, CardContent, CardHeader, CardTitle } from '../../components/UI/Card'
 import Progress from '../../components/UI/Progress'
-import { getDashboardData } from '../../services/api'
+import studentApi from '../../services/studentApi'
 import { toast } from 'react-hot-toast'
+import ViewMentorEvaluation from '../../components/student/ViewMentorEvaluation';
+import ViewTeacherEvaluation from '../../components/student/ViewTeacherEvaluation';
+import PreliminaryReportCheck from '../../components/student/PreliminaryReportCheck';
+import ViewInternshipDuration from '../../components/student/ViewInternshipDuration';
+import { useAuth } from '../../context/AuthContext';
 
 // Create HeaderButton component
 const HeaderButton = ({ icon: Icon, children, ...props }) => (
@@ -65,8 +70,50 @@ const StatCard = ({ title, value, icon: Icon, color, gradient }) => (
   </Card>
 );
 
+// Create ProfileCircle component
+const ProfileCircle = ({ user }) => {
+  const initials = user?.first_name && user?.last_name 
+    ? `${user.first_name[0]}${user.last_name[0]}`
+    : user?.username?.[0] || '?';
+
+  return (
+    <div className="relative group">
+      {user?.profile_picture ? (
+        <img
+          src={user.profile_picture}
+          alt={user.username}
+          className="h-10 w-10 rounded-full object-cover border-2 border-emerald-200 hover:border-emerald-500 transition-colors duration-200"
+        />
+      ) : (
+        <div className="h-10 w-10 rounded-full bg-emerald-100 flex items-center justify-center border-2 border-emerald-200 hover:border-emerald-500 transition-colors duration-200">
+          <span className="text-sm font-medium text-emerald-600">
+            {initials.toUpperCase()}
+          </span>
+        </div>
+      )}
+      
+      {/* Dropdown Menu */}
+      <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 hidden group-hover:block z-50">
+        <Link
+          to="/dashboard/edit-profile"
+          className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+        >
+          Edit Profile
+        </Link>
+        <button
+          onClick={() => useAuth().logout()}
+          className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
+        >
+          Sign out
+        </button>
+      </div>
+    </div>
+  );
+};
+
 const StudentDashboard = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [dashboardData, setDashboardData] = useState({
     reportsSubmitted: 0,
     daysRemaining: 0,
@@ -75,22 +122,69 @@ const StudentDashboard = () => {
   })
   const [loading, setLoading] = useState(true)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [notifications, setNotifications] = useState([])
+  const [unreadCount, setUnreadCount] = useState(0)
 
   useEffect(() => {
+    let isSubscribed = true;
+
     const fetchDashboardData = async () => {
       try {
-        const response = await getDashboardData()
-        setDashboardData(response.data)
+        const overview = await studentApi.dashboard.getOverview()
+        const stats = await studentApi.dashboard.getStats()
+        const activities = await studentApi.dashboard.getActivities()
+        const notifs = await studentApi.notifications.getAll()
+
+        if (isSubscribed) {
+          setDashboardData({
+            ...overview,
+            ...stats,
+            recentActivity: activities
+          })
+          setNotifications(notifs)
+          setUnreadCount(notifs.filter(n => !n.read).length)
+        }
       } catch (error) {
-        console.error('Error fetching dashboard data:', error)
-        toast.error('Failed to load dashboard data')
+        if (isSubscribed) {
+          console.error('Error fetching dashboard data:', error)
+          toast.error('Failed to load dashboard data')
+        }
       } finally {
-        setLoading(false)
+        if (isSubscribed) {
+          setLoading(false)
+        }
       }
     }
 
     fetchDashboardData()
+
+    const unsubscribe = studentApi.notifications.subscribeToRealTime((notification) => {
+      if (isSubscribed) {
+        setNotifications(prev => [notification, ...prev])
+        setUnreadCount(prev => prev + 1)
+        toast.success(notification.message)
+      }
+    })
+
+    return () => {
+      isSubscribed = false;
+      if (typeof unsubscribe === 'function') {
+        unsubscribe()
+      }
+    }
   }, [])
+
+  const handleMarkNotificationAsRead = async (notificationId) => {
+    try {
+      await studentApi.notifications.markAsRead(notificationId)
+      setNotifications(prev =>
+        prev.map(n => n.id === notificationId ? { ...n, read: true } : n)
+      )
+      setUnreadCount(prev => prev - 1)
+    } catch (error) {
+      toast.error('Failed to mark notification as read')
+    }
+  }
 
   if (loading) {
     return (
@@ -202,6 +296,7 @@ const StudentDashboard = () => {
                 </div>
               </div>
               <HeaderButton icon={Bell} />
+              <ProfileCircle user={user} />
               <HeaderButton
                 icon={Menu}
                 className="md:hidden"
@@ -253,15 +348,6 @@ const StudentDashboard = () => {
         <div className="bg-white rounded-lg shadow-sm p-6 mb-8">
           <h1 className="text-2xl font-bold text-gray-900">Welcome back, Student</h1>
           <p className="mt-1 text-sm text-gray-500">Here's an overview of your internship progress</p>
-          <div className="mt-4">
-            <Button
-              variant="primary"
-              size="sm"
-              icon={ClipboardEdit}
-            >
-              Submit New Report
-            </Button>
-          </div>
         </div>
 
         {/* Stats Overview */}
@@ -341,6 +427,27 @@ const StudentDashboard = () => {
                 </div>
               </CardContent>
             </Card>
+          </div>
+        )}
+
+        {/* Add Notification Panel */}
+        {notifications.length > 0 && (
+          <div className="fixed right-4 top-20 w-80 bg-white rounded-lg shadow-lg p-4 z-50">
+            <h3 className="text-lg font-semibold mb-2">Notifications</h3>
+            <div className="space-y-2">
+              {notifications.map(notification => (
+                <div
+                  key={notification.id}
+                  className={`p-2 rounded ${notification.read ? 'bg-gray-50' : 'bg-blue-50'}`}
+                  onClick={() => handleMarkNotificationAsRead(notification.id)}
+                >
+                  <p className="text-sm">{notification.message}</p>
+                  <span className="text-xs text-gray-500">
+                    {new Date(notification.createdAt).toLocaleDateString()}
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </main>

@@ -1,22 +1,55 @@
 import React from 'react'
-import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom'
+import { BrowserRouter as Router, Route, Routes } from 'react-router-dom'
+import { Toaster } from 'react-hot-toast'
+import Home from './pages/Home'
+import Login from './pages/auth/Login'
+import Register from './pages/auth/Register'
+import DashboardLayout from './layouts/DashboardLayout'
 import StudentDashboard from './pages/dashboard/StudentDashboard'
+import MentorDashboard from './pages/dashboard/MentorDashboard'
+import TeacherDashboard from './pages/dashboard/TeacherDashboard'
+import AdminDashboard from './pages/dashboard/AdminDashboard'
+import ProtectedRoute from './components/Auth/ProtectedRoute'
+import { useAuth } from './context/AuthContext'
 
-// Placeholder components for other routes
-const Reports = () => <div>Reports Page</div>
-const Evaluations = () => <div>Evaluations Page</div>
-const Settings = () => <div>Settings Page</div>
+// Role-based dashboard component selector
+const DashboardSelector = () => {
+  const { user } = useAuth()
+  
+  switch (user?.role) {
+    case 'mentor':
+      return <MentorDashboard />
+    case 'teacher':
+      return <TeacherDashboard />
+    case 'admin':
+      return <AdminDashboard />
+    default:
+      return <StudentDashboard />
+  }
+}
 
 const App = () => {
   return (
     <Router>
       <div className="min-h-screen bg-background font-sans antialiased">
+        <Toaster position="top-right" />
         <Routes>
-          <Route path="/" element={<Navigate replace to="/dashboard" />} />
-          <Route path="/dashboard" element={<StudentDashboard />} />
-          <Route path="/reports" element={<Reports />} />
-          <Route path="/evaluations" element={<Evaluations />} />
-          <Route path="/settings" element={<Settings />} />
+          {/* Public Routes */}
+          <Route path="/" element={<Home />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+
+          {/* Protected Routes */}
+          <Route 
+            path="/dashboard/*" 
+            element={
+              <ProtectedRoute>
+                <DashboardLayout>
+                  <DashboardSelector />
+                </DashboardLayout>
+              </ProtectedRoute>
+            } 
+          />
         </Routes>
       </div>
     </Router>

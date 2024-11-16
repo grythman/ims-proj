@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react'
-import axios from 'axios'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../UI/Card'
 import { Calendar } from 'lucide-react'
+import { toast } from 'react-hot-toast'
+import studentApi from '../../services/studentApi'
 
 const ViewInternshipDuration = () => {
   const [duration, setDuration] = useState(null)
@@ -11,10 +12,11 @@ const ViewInternshipDuration = () => {
   useEffect(() => {
     const fetchDuration = async () => {
       try {
-        const response = await axios.get('/api/student/internship-duration')
-        setDuration(response.data)
+        const data = await studentApi.internships.getDuration()
+        setDuration(data)
       } catch (err) {
         setError('Failed to load internship duration')
+        toast.error('Failed to load internship duration')
       } finally {
         setLoading(false)
       }
@@ -22,6 +24,14 @@ const ViewInternshipDuration = () => {
 
     fetchDuration()
   }, [])
+
+  const formatDate = (dateString) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    })
+  }
 
   return (
     <Card className="group relative overflow-hidden">
@@ -35,17 +45,36 @@ const ViewInternshipDuration = () => {
       </CardHeader>
       <CardContent>
         {loading ? (
-          <p>Loading duration...</p>
+          <div className="animate-pulse space-y-2">
+            <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+            <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+          </div>
         ) : error ? (
           <p className="text-red-500">{error}</p>
         ) : duration ? (
-          <div>
-            <p className="font-semibold">Start Date: {duration.startDate}</p>
-            <p className="font-semibold mt-2">End Date: {duration.endDate}</p>
-            <p className="mt-2">Total Duration: {duration.totalDays} days</p>
+          <div className="space-y-3">
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-gray-500">Start Date</span>
+              <span className="font-semibold">{formatDate(duration.startDate)}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-gray-500">End Date</span>
+              <span className="font-semibold">{formatDate(duration.endDate)}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-gray-500">Total Duration</span>
+              <span className="font-semibold">{duration.totalDays} days</span>
+            </div>
+            {duration.remainingDays && (
+              <div className="mt-4 p-2 bg-orange-50 rounded-md">
+                <p className="text-sm text-orange-600">
+                  {duration.remainingDays} days remaining
+                </p>
+              </div>
+            )}
           </div>
         ) : (
-          <p>No internship duration available.</p>
+          <p className="text-gray-500">No internship duration available.</p>
         )}
       </CardContent>
     </Card>

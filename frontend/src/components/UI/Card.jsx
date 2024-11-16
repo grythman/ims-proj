@@ -15,7 +15,7 @@ const Card = ({ children, className, ...props }) => {
   );
 };
 
-export const CardHeader = ({ children, className, ...props }) => {
+const CardHeader = ({ children, className, ...props }) => {
   return (
     <div 
       className={clsx('px-4 py-5 sm:p-6', className)} 
@@ -26,7 +26,7 @@ export const CardHeader = ({ children, className, ...props }) => {
   );
 };
 
-export const CardContent = ({ children, className, ...props }) => {
+const CardContent = ({ children, className, ...props }) => {
   return (
     <div 
       className={clsx('px-4 pb-5 sm:px-6', className)} 
@@ -37,7 +37,7 @@ export const CardContent = ({ children, className, ...props }) => {
   );
 };
 
-export const CardTitle = ({ children, className, ...props }) => {
+const CardTitle = ({ children, className, ...props }) => {
   return (
     <h3 
       className={clsx('text-lg font-medium text-gray-900', className)} 
@@ -48,7 +48,7 @@ export const CardTitle = ({ children, className, ...props }) => {
   );
 };
 
-export const CardDescription = ({ children, className, ...props }) => {
+const CardDescription = ({ children, className, ...props }) => {
   return (
     <p 
       className={clsx('mt-1 text-sm text-gray-500', className)} 
@@ -59,4 +59,5 @@ export const CardDescription = ({ children, className, ...props }) => {
   );
 };
 
-export default Card;
+// Single export statement
+export { Card, CardHeader, CardContent, CardTitle, CardDescription };

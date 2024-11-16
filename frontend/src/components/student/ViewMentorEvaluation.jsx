@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react'
-import axios from 'axios'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../UI/Card'
 import { Button } from '../UI/Button'
-import { Users } from 'lucide-react'
+import { Users, Star } from 'lucide-react'
+import { toast } from 'react-hot-toast'
+import studentApi from '../../services/studentApi'
 
 const ViewMentorEvaluation = () => {
   const [evaluation, setEvaluation] = useState(null)
@@ -12,10 +13,11 @@ const ViewMentorEvaluation = () => {
   useEffect(() => {
     const fetchEvaluation = async () => {
       try {
-        const response = await axios.get('/api/student/mentor-evaluation')
-        setEvaluation(response.data)
+        const data = await studentApi.evaluations.getMentorEvaluation()
+        setEvaluation(data)
       } catch (err) {
         setError('Failed to load mentor evaluation')
+        toast.error('Failed to load mentor evaluation')
       } finally {
         setLoading(false)
       }
@@ -23,6 +25,19 @@ const ViewMentorEvaluation = () => {
 
     fetchEvaluation()
   }, [])
+
+  const renderStars = (score) => {
+    return [...Array(5)].map((_, index) => (
+      <Star
+        key={index}
+        className={`h-4 w-4 ${
+          index < score
+            ? 'text-yellow-400 fill-current'
+            : 'text-gray-300'
+        }`}
+      />
+    ))
+  }
 
   return (
     <Card className="group relative overflow-hidden">
@@ -36,17 +51,50 @@ const ViewMentorEvaluation = () => {
       </CardHeader>
       <CardContent>
         {loading ? (
-          <p>Loading evaluation...</p>
+          <div className="animate-pulse space-y-4">
+            <div className="h-4 bg-gray-200 rounded w-1/4"></div>
+            <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+            <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+          </div>
         ) : error ? (
           <p className="text-red-500">{error}</p>
         ) : evaluation ? (
-          <div>
-            <p className="font-semibold">Score: {evaluation.score}</p>
-            <p className="mt-2">{evaluation.feedback}</p>
+          <div className="space-y-4">
+            <div>
+              <p className="text-sm text-gray-500 mb-1">Overall Score</p>
+              <div className="flex items-center space-x-1">
+                {renderStars(evaluation.score)}
+                <span className="ml-2 text-sm font-medium">
+                  {evaluation.score}/5
+                </span>
+              </div>
+            </div>
+            
+            <div>
+              <p className="text-sm text-gray-500 mb-1">Feedback</p>
+              <p className="text-sm">{evaluation.feedback}</p>
+            </div>
+
+            {evaluation.areas && (
+              <div>
+                <p className="text-sm text-gray-500 mb-1">Areas of Excellence</p>
+                <div className="flex flex-wrap gap-2">
+                  {evaluation.areas.map((area, index) => (
+                    <span
+                      key={index}
+                      className="px-2 py-1 bg-purple-100 text-purple-600 rounded-full text-xs"
+                    >
+                      {area}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         ) : (
-          <p>No evaluation available yet.</p>
+          <p className="text-gray-500">No evaluation available yet.</p>
         )}
+        
         <Button
           variant="secondary"
           className="w-full mt-4 bg-purple-500/10 hover:bg-purple-500/20 text-purple-500"

@@ -1,66 +1,123 @@
 import api from './api';
 
-// Profile management
-export const getMe = () => api.get('/api/users/me/');
-export const updateProfile = (profileData) => api.put('/api/users/me/', profileData);
+// API Response types for better TypeScript support
+/**
+ * @typedef {Object} ApiResponse
+ * @property {boolean} success
+ * @property {string} message
+ * @property {any} data
+ */
 
-// Report submission
-export const submitReport = (reportData) => 
-  api.post('/api/reports/submit/', reportData);
+const ENDPOINTS = {
+  PROFILE: '/api/users/me',
+  REPORTS: '/api/reports',
+  INTERNSHIPS: '/api/internships',
+  EVALUATIONS: '/api/evaluations',
+  DASHBOARD: '/api/dashboard',
+  NOTIFICATIONS: '/api/notifications',
+  ACTIVITIES: '/api/users/activities',
+};
 
-export const getReportStatus = (reportId) => 
-  api.get(`/api/reports/${reportId}/status/`);
+// Profile management with error handling
+export const profileService = {
+  getProfile: () => api.get(ENDPOINTS.PROFILE),
+  updateProfile: (data) => api.put(ENDPOINTS.PROFILE, data),
+  uploadProfilePicture: (imageData) => 
+    api.post(`${ENDPOINTS.PROFILE}/picture`, imageData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    }),
+};
 
-// Internship registration
-export const registerInternship = (internshipData) => 
-  api.post('/api/internships/register/', internshipData);
+// Report management with advanced features
+export const reportService = {
+  submitReport: (data) => api.post(`${ENDPOINTS.REPORTS}/submit`, data),
+  getReportStatus: (reportId) => api.get(`${ENDPOINTS.REPORTS}/${reportId}/status`),
+  submitPreliminary: (data) => api.post(`${ENDPOINTS.REPORTS}/preliminary`, data),
+  getPreliminaryStatus: () => api.get(`${ENDPOINTS.REPORTS}/preliminary/status`),
+  getAllReports: (params) => api.get(ENDPOINTS.REPORTS, { params }),
+  downloadReport: (reportId) => 
+    api.get(`${ENDPOINTS.REPORTS}/${reportId}/download`, { responseType: 'blob' }),
+};
 
-export const getInternshipDetails = () => 
-  api.get('/api/internships/current/');
+// Internship management with validation
+export const internshipService = {
+  register: (data) => api.post(`${ENDPOINTS.INTERNSHIPS}/register`, data),
+  getCurrent: () => api.get(`${ENDPOINTS.INTERNSHIPS}/current`),
+  getDuration: () => api.get(`${ENDPOINTS.INTERNSHIPS}/duration`),
+  updateDetails: (data) => api.put(`${ENDPOINTS.INTERNSHIPS}/current`, data),
+  terminateInternship: (reason) => 
+    api.post(`${ENDPOINTS.INTERNSHIPS}/terminate`, { reason }),
+};
 
-// Evaluations
-export const getMentorEvaluation = () => 
-  api.get('/api/evaluations/mentor/');
+// Evaluation system
+export const evaluationService = {
+  getMentorEvaluation: () => api.get(`${ENDPOINTS.EVALUATIONS}/mentor`),
+  getTeacherEvaluation: () => api.get(`${ENDPOINTS.EVALUATIONS}/teacher`),
+  submitSelfEvaluation: (data) => api.post(`${ENDPOINTS.EVALUATIONS}/self`, data),
+  getEvaluationHistory: () => api.get(`${ENDPOINTS.EVALUATIONS}/history`),
+};
 
-export const getTeacherEvaluation = () => 
-  api.get('/api/evaluations/teacher/');
+// Dashboard and analytics
+export const dashboardService = {
+  getOverview: () => api.get(`${ENDPOINTS.DASHBOARD}/student`),
+  getStats: () => api.get(`${ENDPOINTS.DASHBOARD}/stats`),
+  getActivities: (params) => api.get(ENDPOINTS.ACTIVITIES, { params }),
+  logActivity: (data) => api.post(ENDPOINTS.ACTIVITIES, data),
+};
 
-// Preliminary report
-export const submitPreliminaryReport = (reportData) => 
-  api.post('/api/reports/preliminary/', reportData);
+// Notification system with real-time support
+export const notificationService = {
+  getAll: (params) => api.get(ENDPOINTS.NOTIFICATIONS, { params }),
+  markAsRead: (notificationId) => 
+    api.put(`${ENDPOINTS.NOTIFICATIONS}/${notificationId}/read`),
+  updatePreferences: (preferences) => 
+    api.put(`${ENDPOINTS.NOTIFICATIONS}/preferences`, preferences),
+  getPreferences: () => api.get(`${ENDPOINTS.NOTIFICATIONS}/preferences`),
+  subscribeToRealTime: (callback) => {
+    // Implement WebSocket connection here
+    console.warn('WebSocket implementation required');
+  },
+};
 
-export const getPreliminaryReportStatus = () => 
-  api.get('/api/reports/preliminary/status/');
+// Error handling wrapper
+const withErrorHandling = (apiCall) => async (...args) => {
+  try {
+    const response = await apiCall(...args);
+    return response.data;
+  } catch (error) {
+    if (error.code === 'ECONNABORTED') {
+      throw new Error('Request timed out. Please try again.');
+    }
+    console.error('API Error:', error);
+    throw error.response?.data || error;
+  }
+};
 
-// Internship duration
-export const getInternshipDuration = () => 
-  api.get('/api/internships/duration/');
-
-// Student dashboard
-export const getStudentDashboard = () => 
-  api.get('/api/dashboard/student/');
-
-export const getStudentStats = () => 
-  api.get('/api/users/stats/student/');
-
-// Student activities
-export const getStudentActivities = () => 
-  api.get('/api/users/activities/');
-
-export const logActivity = (activityData) => 
-  api.post('/api/users/activities/', activityData);
-
-// Student notifications
-export const getNotifications = () => 
-  api.get('/api/notifications/');
-
-export const markNotificationAsRead = (notificationId) => 
-  api.put(`/api/notifications/${notificationId}/read/`);
-
-// Student preferences
-export const updateNotificationPreferences = (preferences) => 
-  api.put('/api/users/notification-preferences/', preferences);
-
-export const getNotificationPreferences = () => 
-  api.get('/api/users/notification-preferences/');
+// Export wrapped services
+export default {
+  profile: Object.keys(profileService).reduce((acc, key) => ({
+    ...acc,
+    [key]: withErrorHandling(profileService[key])
+  }), {}),
+  reports: Object.keys(reportService).reduce((acc, key) => ({
+    ...acc,
+    [key]: withErrorHandling(reportService[key])
+  }), {}),
+  internships: Object.keys(internshipService).reduce((acc, key) => ({
+    ...acc,
+    [key]: withErrorHandling(internshipService[key])
+  }), {}),
+  evaluations: Object.keys(evaluationService).reduce((acc, key) => ({
+    ...acc,
+    [key]: withErrorHandling(evaluationService[key])
+  }), {}),
+  dashboard: Object.keys(dashboardService).reduce((acc, key) => ({
+    ...acc,
+    [key]: withErrorHandling(dashboardService[key])
+  }), {}),
+  notifications: Object.keys(notificationService).reduce((acc, key) => ({
+    ...acc,
+    [key]: withErrorHandling(notificationService[key])
+  }), {}),
+};
   
