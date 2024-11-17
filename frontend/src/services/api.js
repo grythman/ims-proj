@@ -9,13 +9,22 @@ const api = axios.create({
 });
 
 export const login = async (username, password) => {
-  try {
-      const response = await api.post('/api/users/login/', { username, password });
-      return response.data;
-  } catch (error) {
-      console.error('Login API error:', error.response?.data || error.message);
-      throw error;
-  }
+    try {
+        const response = await api.post('/api/users/login/', {
+            username: username,
+            password: password
+        });
+        
+        if (response.data?.data?.access_token) {
+            localStorage.setItem('token', response.data.data.access_token);
+            localStorage.setItem('user', JSON.stringify(response.data.data.user));
+        }
+        
+        return response.data;
+    } catch (error) {
+        console.error('Login API error:', error.response?.data || error.message);
+        throw error;
+    }
 };
 
 // Define and export the getMe function
@@ -28,6 +37,29 @@ export const getMe = async () => {
 export const register = async (userData) => {
     const response = await api.post('/api/users/register/', userData);
     return response.data;
+};
+
+export const forgotPassword = async (email) => {
+    try {
+        const response = await api.post('/api/users/password-reset/', { email });
+        return response.data;
+    } catch (error) {
+        console.error('Password reset error:', error.response?.data || error.message);
+        throw error;
+    }
+};
+
+export const resetPassword = async (token, password) => {
+    try {
+        const response = await api.post('/api/users/password-reset/confirm/', {
+            token,
+            password
+        });
+        return response.data;
+    } catch (error) {
+        console.error('Password reset confirm error:', error.response?.data || error.message);
+        throw error;
+    }
 };
 
 // Request interceptor

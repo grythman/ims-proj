@@ -12,6 +12,8 @@ import AdminDashboardLayout from './layouts/AdminDashboardLayout'
 import HomePage from './pages/Home'
 import Login from './pages/auth/Login'
 import Register from './pages/auth/Register'
+import ForgotPassword from './pages/auth/ForgotPassword'
+import ResetPassword from './pages/auth/ResetPassword'
 
 // Dashboards
 import StudentDashboard from './pages/dashboard/StudentDashboard'
@@ -83,6 +85,8 @@ const App = () => {
           <Route path="/" element={<HomePage />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
 
           {/* Protected Dashboard Routes */}
           <Route

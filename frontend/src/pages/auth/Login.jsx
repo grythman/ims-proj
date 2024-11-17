@@ -23,28 +23,26 @@ const Login = () => {
     }));
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    
-    if (!credentials.username.trim() || !credentials.password.trim()) {
-      toast.error('Please enter both username and password');
-      return;
-    }
-
+  const handleSubmit = async (event) => {
+    event.preventDefault();
     setLoading(true);
     
     try {
-      const success = await login(credentials);
-      
-      if (success) {
-        toast.success('Login successful!');
+        if (!credentials.username || !credentials.password) {
+            toast.error('Please enter both username and password');
+            setLoading(false);
+            return;
+        }
+        
+        const data = await login(credentials.username, credentials.password);
+        console.log('Login successful:', data);
         navigate('/dashboard');
-      }
     } catch (error) {
-      console.error('Login error:', error);
-      toast.error(error.response?.data?.message || 'Login failed');
+        console.error('Login error:', error);
+        const errorMessage = error.response?.data?.message || 'Login failed. Please check your credentials.';
+        toast.error(errorMessage);
     } finally {
-      setLoading(false);
+        setLoading(false);
     }
   };
 
