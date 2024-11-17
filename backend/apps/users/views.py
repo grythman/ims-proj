@@ -2,7 +2,7 @@ from rest_framework import viewsets, permissions, status, generics
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 from django.db.models import Count, Q
-from .serializers import UserSerializer, LoginSerializer, ActivitySerializer, NotificationPreferenceSerializer
+from .serializers import UserSerializer, LoginSerializer, ActivitySerializer, NotificationPreferenceSerializer, UserRegistrationSerializer
 from .permissions import IsUserManagerOrSelf, IsAdminUser
 from .models import User, Activity, NotificationPreference
 from django.contrib.auth import get_user_model, authenticate, login
@@ -18,41 +18,45 @@ User = get_user_model()
 class RegisterView(APIView):
     permission_classes = [AllowAny]
 
-    def post(self, request):
-        serializer = UserSerializer(data=request.data)
+    def post(self, request, *args, **kwargs):
+        serializer = UserRegistrationSerializer(data=request.data)
         if serializer.is_valid():
-            user = serializer.save()
+            try:
+                user = serializer.save()
+                return Response({
+                    'status': 'success',
+                    'message': 'User registered successfully',
+                    'data': serializer.data
+                }, status=201)
+            except Exception as e:
+                return Response({
+                    'status': 'error',
+                    'message': 'Registration failed',
+                    'errors': str(e)
+                }, status=400)
+        else:
             return Response({
-                'status': 'success',
-                'message': 'User registered successfully',
-                'data': UserSerializer(user).data
-            }, status=status.HTTP_201_CREATED)
-        return Response({
-            'status': 'error',
-            'message': 'Registration failed',
-            'errors': serializer.errors
-        }, status=status.HTTP_400_BAD_REQUEST)
+                'status': 'error',
+                'message': 'Registration failed',
+                'errors': serializer.errors
+            }, status=400)
 
 @method_decorator(csrf_exempt, name='dispatch')
 class LoginView(APIView):
     permission_classes = (AllowAny,)
 
     def post(self, request):
-        try:
-            serializer = LoginSerializer(data=request.data)
-            if serializer.is_valid():
-                user = serializer.validated_data
-                refresh = RefreshToken.for_user(user)
-                return Response({
-                    'access_token': str(refresh.access_token),
-                    'refresh_token': str(refresh),
-                    'user': UserSerializer(user).data
-                })
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        except Exception as e:
+        serializer = LoginSerializer(data=request.data)
+        if serializer.is_valid():
+            user = serializer.validated_data['user']
+            refresh = RefreshToken.for_user(user)
             return Response({
-                'error': str(e)
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                'access_token': str(refresh.access_token),
+                'refresh_token': str(refresh),
+                'user': UserSerializer(user).data
+            })
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()

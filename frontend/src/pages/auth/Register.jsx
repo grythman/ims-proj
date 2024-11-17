@@ -2,8 +2,8 @@ import React, { useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import { register } from '../../services/api';
-import Button from '../components/UI/Button';
-import Input from '../components/UI/Input';
+import Button from '../../components/UI/Button';
+import Input from '../../components/UI/Input';
 
 const Register = () => {
   const [formData, setFormData] = useState({
@@ -44,34 +44,29 @@ const Register = () => {
     e.preventDefault();
     setLoading(true);
 
-    if (formData.password !== formData.password_confirm) {
+    if (formData.password !== formData.confirm_password) {
       toast.error('Passwords do not match');
       setLoading(false);
       return;
     }
 
     try {
-      const dataToSend = {
-        ...formData,
+      const response = await register({
+        username: formData.username,
+        email: formData.email,
+        password: formData.password,
         password_confirm: formData.confirm_password,
-        year_of_study: formData.year_of_study ? parseInt(formData.year_of_study) : null,
-        expertise: Array.isArray(formData.expertise) ? formData.expertise : []
-      };
-
-      const response = await register(dataToSend);
+        first_name: formData.first_name,
+        last_name: formData.last_name,
+        user_type: formData.user_type,
+        // Include other fields as necessary
+      });
       console.log('Registration response:', response);
       toast.success('Registration successful! Please login.');
       navigate('/login');
     } catch (error) {
       console.error('Registration error:', error);
-      const errorMessage = error.response?.data?.errors ||
-        error.response?.data?.message ||
-        'Registration failed. Please try again.';
-      toast.error(typeof errorMessage === 'object' ?
-        Object.values(errorMessage).join(', ') :
-        errorMessage
-      );
-    } finally {
+      toast.error(error.response?.data?.message || 'Registration failed');
       setLoading(false);
     }
   };
@@ -227,8 +222,8 @@ const Register = () => {
             <Input
               label="Confirm Password"
               type="password"
-              name="password_confirm"
-              value={formData.password_confirm}
+              name="confirm_password"
+              value={formData.confirm_password}
               onChange={handleChange}
               required
             />

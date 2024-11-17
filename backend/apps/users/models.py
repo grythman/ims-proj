@@ -98,3 +98,12 @@ class NotificationPreference(models.Model):
 
     def __str__(self):
         return f"{self.user.username}'s notification preferences"
+
+    @staticmethod
+    def get_default_preferences():
+        # Return default notification preferences
+        return {
+            'email_notifications': True,
+            'push_notifications': True,
+            'sms_notifications': False,
+        }

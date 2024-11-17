@@ -5,8 +5,30 @@ const api = axios.create({
     headers: {
         'Content-Type': 'application/json',
     },
-    withCredentials: true,  // Important for CORS
+    withCredentials: true,
 });
+
+export const login = async (username, password) => {
+  try {
+      const response = await api.post('/api/users/login/', { username, password });
+      return response.data;
+  } catch (error) {
+      console.error('Login API error:', error.response?.data || error.message);
+      throw error;
+  }
+};
+
+// Define and export the getMe function
+export const getMe = async () => {
+    const response = await api.get('/api/users/me/');
+    return response.data;
+};
+
+// Define and export the register function
+export const register = async (userData) => {
+    const response = await api.post('/api/users/register/', userData);
+    return response.data;
+};
 
 // Request interceptor
 api.interceptors.request.use(

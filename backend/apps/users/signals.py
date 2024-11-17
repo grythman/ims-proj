@@ -85,3 +85,15 @@ def assign_user_permissions(sender, instance, created, **kwargs):
 
         except Exception as e:
             print(f"Error in assign_user_permissions signal: {str(e)}")
+
+@receiver(post_save, sender=User)
+def create_or_update_user_notification_preferences(sender, instance, created, **kwargs):
+    if created:
+        # Create NotificationPreference only if it doesn't exist
+        NotificationPreference.objects.get_or_create(user=instance)
+    else:
+        # Update or perform actions on existing NotificationPreference
+        preferences = NotificationPreference.objects.filter(user=instance).first()
+        if preferences:
+            # Update preferences or perform other actions
+            pass
