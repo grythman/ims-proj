@@ -34,9 +34,8 @@ const Login = () => {
             return;
         }
         
-        const data = await login(credentials.username, credentials.password);
-        console.log('Login successful:', data);
-        navigate('/dashboard');
+        const { redirectPath } = await login(credentials.username, credentials.password);
+        navigate(redirectPath);
     } catch (error) {
         console.error('Login error:', error);
         const errorMessage = error.response?.data?.message || 'Login failed. Please check your credentials.';

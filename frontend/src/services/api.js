@@ -1,18 +1,21 @@
 import axios from 'axios';
 
+// Create axios instance with default config
 const api = axios.create({
     baseURL: process.env.REACT_APP_API_URL || 'http://localhost:8000',
     headers: {
         'Content-Type': 'application/json',
     },
     withCredentials: true,
+    timeout: 10000, // 10 second timeout
 });
 
+// Auth related API calls
 export const login = async (username, password) => {
     try {
         const response = await api.post('/api/users/login/', {
-            username: username,
-            password: password
+            username,
+            password
         });
         
         if (response.data?.data?.access_token) {
@@ -27,18 +30,32 @@ export const login = async (username, password) => {
     }
 };
 
-// Define and export the getMe function
 export const getMe = async () => {
-    const response = await api.get('/api/users/me/');
-    return response.data;
+    try {
+        const token = localStorage.getItem('token');
+        if (!token) {
+            throw new Error('No authentication token found');
+        }
+
+        const response = await api.get('/api/users/me/');
+        return response.data;
+    } catch (error) {
+        console.error('GetMe API error:', error.response?.data || error.message);
+        throw error;
+    }
 };
 
-// Define and export the register function
 export const register = async (userData) => {
-    const response = await api.post('/api/users/register/', userData);
-    return response.data;
+    try {
+        const response = await api.post('/api/users/register/', userData);
+        return response.data;
+    } catch (error) {
+        console.error('Register API error:', error.response?.data || error.message);
+        throw error;
+    }
 };
 
+// Password reset functions
 export const forgotPassword = async (email) => {
     try {
         const response = await api.post('/api/users/password-reset/', { email });
@@ -62,7 +79,7 @@ export const resetPassword = async (token, password) => {
     }
 };
 
-// Request interceptor
+// Request interceptor for adding auth token and handling requests
 api.interceptors.request.use(
     (config) => {
         const token = localStorage.getItem('token');
@@ -71,14 +88,28 @@ api.interceptors.request.use(
         }
         return config;
     },
-    (error) => Promise.reject(error)
+    (error) => {
+        console.error('Request interceptor error:', error);
+        return Promise.reject(error);
+    }
 );
 
-// Response interceptor
+// Response interceptor for handling common responses and errors
 api.interceptors.response.use(
     (response) => response,
     async (error) => {
-        console.error('API Error:', error.response?.data || error.message);
+        if (error.response?.status === 401) {
+            // Handle unauthorized access
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            window.location.href = '/login';
+        } else if (!error.response && error.message === 'Network Error') {
+            // Handle network errors
+            console.error('Network error - please check your connection');
+        } else {
+            // Log other errors
+            console.error('API Error:', error.response?.data || error.message);
+        }
         return Promise.reject(error);
     }
 );

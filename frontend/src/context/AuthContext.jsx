@@ -27,6 +27,21 @@ export const AuthProvider = ({ children }) => {
         setLoading(false);
     };
 
+    const handleRoleBasedRedirect = (userType) => {
+        switch (userType) {
+            case 'student':
+                return '/dashboard';
+            case 'mentor':
+                return '/mentor/dashboard';
+            case 'teacher':
+                return '/teacher/dashboard';
+            case 'admin':
+                return '/admin/dashboard';
+            default:
+                return '/dashboard';
+        }
+    };
+
     const login = async (username, password) => {
         try {
             const response = await loginApi(username, password);
@@ -34,7 +49,10 @@ export const AuthProvider = ({ children }) => {
             if (response.data?.access_token) {
                 localStorage.setItem('token', response.data.access_token);
                 setUser(response.data.user);
-                return response.data;
+                return {
+                    data: response.data,
+                    redirectPath: handleRoleBasedRedirect(response.data.user.user_type)
+                };
             }
             
             throw new Error('Login failed: Invalid response format');
@@ -49,6 +67,7 @@ export const AuthProvider = ({ children }) => {
     const logout = () => {
         localStorage.removeItem('token');
         setUser(null);
+        return '/login';
     };
 
     return (

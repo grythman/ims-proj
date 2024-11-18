@@ -179,3 +179,61 @@ class AdminDashboardView(views.APIView):
     def get_recent_activities(self):
         # Implementation of get_recent_activities method...
         pass
+
+class StudentActivitiesView(views.APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        if user.user_type != 'student':
+            return Response({
+                'error': 'Only students can access this endpoint'
+            }, status=status.HTTP_403_FORBIDDEN)
+
+        try:
+            # Get recent reports
+            reports = Report.objects.filter(
+                student=user
+            ).order_by('-created_at')[:5]
+
+            # Get recent tasks
+            tasks = Task.objects.filter(
+                internship__student=user
+            ).order_by('-created_at')[:5]
+
+            # Combine and format activities
+            activities = []
+
+            for report in reports:
+                activities.append({
+                    'id': f'report_{report.id}',
+                    'type': 'report',
+                    'title': report.title,
+                    'status': report.status,
+                    'date': report.created_at,
+                    'description': f'Report {report.get_status_display()}'
+                })
+
+            for task in tasks:
+                activities.append({
+                    'id': f'task_{task.id}',
+                    'type': 'task',
+                    'title': task.title,
+                    'status': task.status,
+                    'date': task.created_at,
+                    'description': f'Task {task.get_status_display()}'
+                })
+
+            # Sort activities by date
+            activities.sort(key=lambda x: x['date'], reverse=True)
+
+            return Response({
+                'status': 'success',
+                'data': activities[:5]  # Return only the 5 most recent activities
+            })
+
+        except Exception as e:
+            return Response({
+                'status': 'error',
+                'message': str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

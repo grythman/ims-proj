@@ -11,6 +11,7 @@ from .serializers import (
 )
 from .permissions import IsReportParticipant, CanReviewReports
 from apps.notifications.services import NotificationService
+from rest_framework.views import APIView
 
 class ReportViewSet(viewsets.ModelViewSet):
     serializer_class = ReportSerializer
@@ -142,3 +143,53 @@ class ReportTemplateViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(created_by=self.request.user)
+
+class PreliminaryReportStatusView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        try:
+            report = Report.objects.filter(
+                student=request.user,
+                report_type='preliminary',
+                status__in=['pending', 'approved', 'rejected']
+            ).first()
+            
+            return Response({
+                'status': report.status if report else 'not_submitted',
+                'feedback': report.feedback if report else None,
+                'submitted_at': report.created_at if report else None
+            })
+        except Exception as e:
+            return Response({
+                'error': str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+class PreliminaryReportView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        try:
+            serializer = ReportSerializer(data={
+                **request.data,
+                'student': request.user.id,
+                'report_type': 'preliminary'
+            })
+            
+            if serializer.is_valid():
+                report = serializer.save()
+                return Response({
+                    'status': 'success',
+                    'data': ReportSerializer(report).data
+                }, status=status.HTTP_201_CREATED)
+                
+            return Response({
+                'status': 'error',
+                'errors': serializer.errors
+            }, status=status.HTTP_400_BAD_REQUEST)
+            
+        except Exception as e:
+            return Response({
+                'status': 'error',
+                'message': str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

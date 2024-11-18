@@ -5,6 +5,7 @@ from django.db.models import Count, Q
 from .serializers import UserSerializer, LoginSerializer, ActivitySerializer, NotificationPreferenceSerializer, UserRegistrationSerializer
 from .permissions import IsUserManagerOrSelf, IsAdminUser
 from .models import User, Activity, NotificationPreference
+from apps.internships.models import Internship, Report, Task
 from django.contrib.auth import get_user_model, authenticate, login
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.views import APIView
@@ -104,28 +105,69 @@ class UserViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['get'])
     def stats(self, request):
-        user = request.user
-        stats = {}
+        try:
+            user = request.user
+            stats = {}
 
-        if user.user_type == 'student':
-            stats = {
-                'internships': user.internships.count(),
-                'reports_submitted': user.submitted_reports.count(),
-                'tasks_completed': user.tasks.filter(status='completed').count()
-            }
-        elif user.user_type == 'mentor':
-            stats = {
-                'assigned_students': user.mentored_internships.count(),
-                'pending_reports': user.reviewed_reports.filter(status='pending').count()
-            }
-        elif user.user_type in ['teacher', 'admin']:
-            stats = {
-                'total_students': User.objects.filter(user_type='student').count(),
-                'active_internships': user.internships.filter(status='active').count(),
-                'pending_reports': user.reports.filter(status='pending').count()
-            }
+            if user.user_type == 'student':
+                internships = Internship.objects.filter(student=user)
+                reports = Report.objects.filter(student=user)
+                
+                stats = {
+                    'internships': {
+                        'total': internships.count(),
+                        'active': internships.filter(status='active').count(),
+                        'completed': internships.filter(status='completed').count()
+                    },
+                    'reports': {
+                        'total': reports.count(),
+                        'pending': reports.filter(status='pending').count(),
+                        'approved': reports.filter(status='approved').count(),
+                        'rejected': reports.filter(status='rejected').count()
+                    },
+                    'tasks': {
+                        'total': Task.objects.filter(internship__student=user).count(),
+                        'completed': Task.objects.filter(internship__student=user, status='completed').count(),
+                        'pending': Task.objects.filter(internship__student=user, status='pending').count()
+                    }
+                }
+            elif user.user_type == 'mentor':
+                stats = {
+                    'students': {
+                        'total': Internship.objects.filter(mentor=user).count(),
+                        'active': Internship.objects.filter(mentor=user, status='active').count()
+                    },
+                    'reports': {
+                        'pending_review': Report.objects.filter(mentor=user, status='pending').count(),
+                        'reviewed': Report.objects.filter(mentor=user).exclude(status='pending').count()
+                    }
+                }
+            elif user.user_type in ['teacher', 'admin']:
+                stats = {
+                    'students': {
+                        'total': User.objects.filter(user_type='student').count(),
+                        'active': Internship.objects.filter(status='active').count()
+                    },
+                    'reports': {
+                        'total': Report.objects.all().count(),
+                        'pending': Report.objects.filter(status='pending').count()
+                    },
+                    'internships': {
+                        'total': Internship.objects.all().count(),
+                        'active': Internship.objects.filter(status='active').count(),
+                        'completed': Internship.objects.filter(status='completed').count()
+                    }
+                }
 
-        return Response(stats)
+            return Response({
+                'status': 'success',
+                'data': stats
+            })
+        except Exception as e:
+            return Response({
+                'status': 'error',
+                'message': str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class PasswordResetView(APIView):
     permission_classes = [AllowAny]

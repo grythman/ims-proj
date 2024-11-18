@@ -25,39 +25,7 @@ const StatCard = ({ title, value, icon: Icon, color, gradient }) => (
       <Icon className="h-4 w-4 text-white/70" />
     </CardHeader>
     <CardContent>
-      <div className="text-3xl font-bold">{value}</div>
-    </CardContent>
-  </Card>
-);
-
-// Create ReportCard component
-const ReportCard = ({ report, onReview }) => (
-  <Card className="hover:shadow-md transition-shadow">
-    <CardContent className="p-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-3">
-          <div className={`p-2 rounded-full ${
-            report.status === 'pending' ? 'bg-yellow-100' : 
-            report.status === 'approved' ? 'bg-green-100' : 
-            'bg-red-100'
-          }`}>
-            {report.status === 'pending' ? <Clock className="h-5 w-5 text-yellow-600" /> :
-             report.status === 'approved' ? <CheckCircle className="h-5 w-5 text-green-600" /> :
-             <AlertCircle className="h-5 w-5 text-red-600" />}
-          </div>
-          <div>
-            <h3 className="font-medium text-gray-900">{report.student_name}</h3>
-            <p className="text-sm text-gray-500">{report.report_type}</p>
-          </div>
-        </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => onReview(report)}
-        >
-          Review
-        </Button>
-      </div>
+      <div className="text-3xl font-bold">{value || 0}</div>
     </CardContent>
   </Card>
 );
@@ -72,41 +40,33 @@ const TeacherDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [filteredReports, setFilteredReports] = useState([]);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    const fetchDashboardData = async () => {
-      try {
-        const data = await teacherApi.dashboard.getOverview();
-        setDashboardData(data);
-        setFilteredReports(data.recentReports);
-      } catch (error) {
-        console.error('Error fetching dashboard data:', error);
-        toast.error('Failed to load dashboard data');
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchDashboardData();
   }, []);
 
-  const handleSearch = (query) => {
-    setSearchQuery(query);
-    const filtered = dashboardData.recentReports.filter(report => 
-      report.student_name.toLowerCase().includes(query.toLowerCase()) ||
-      report.report_type.toLowerCase().includes(query.toLowerCase())
-    );
-    setFilteredReports(filtered);
+  const fetchDashboardData = async () => {
+    try {
+      const data = await teacherApi.dashboard.getOverview();
+      setDashboardData(data);
+      setFilteredReports(data.recentReports || []);
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error);
+      setError('Failed to load dashboard data');
+      toast.error('Failed to load dashboard data');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleReviewReport = async (report) => {
-    try {
-      // Navigate to review page or open modal
-      // This is where you'd implement the review functionality
-      toast.success('Opening report for review...');
-    } catch (error) {
-      toast.error('Failed to open report');
-    }
+  const handleSearch = (query) => {
+    setSearchQuery(query);
+    const filtered = (dashboardData.recentReports || []).filter(report => 
+      report.student_name?.toLowerCase().includes(query.toLowerCase()) ||
+      report.report_type?.toLowerCase().includes(query.toLowerCase())
+    );
+    setFilteredReports(filtered);
   };
 
   if (loading) {
@@ -117,22 +77,30 @@ const TeacherDashboard = () => {
     );
   }
 
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-red-500">{error}</div>
+      </div>
+    );
+  }
+
   const stats = [
     {
       title: "Total Students",
-      value: dashboardData.totalStudents,
+      value: dashboardData.totalStudents || 0,
       icon: Users,
       gradient: "from-blue-500 to-blue-600"
     },
     {
       title: "Pending Reports",
-      value: dashboardData.pendingReports,
+      value: dashboardData.pendingReports || 0,
       icon: FileText,
       gradient: "from-yellow-500 to-yellow-600"
     },
     {
       title: "Completed Evaluations",
-      value: dashboardData.completedEvaluations,
+      value: dashboardData.completedEvaluations || 0,
       icon: CheckCircle,
       gradient: "from-green-500 to-green-600"
     }
@@ -171,11 +139,34 @@ const TeacherDashboard = () => {
 
         <div className="space-y-4">
           {filteredReports.map((report) => (
-            <ReportCard
-              key={report.id}
-              report={report}
-              onReview={handleReviewReport}
-            />
+            <Card key={report.id}>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <div className={`p-2 rounded-full ${
+                      report.status === 'pending' ? 'bg-yellow-100' : 
+                      report.status === 'approved' ? 'bg-green-100' : 
+                      'bg-red-100'
+                    }`}>
+                      {report.status === 'pending' ? <Clock className="h-5 w-5 text-yellow-600" /> :
+                       report.status === 'approved' ? <CheckCircle className="h-5 w-5 text-green-600" /> :
+                       <AlertCircle className="h-5 w-5 text-red-600" />}
+                    </div>
+                    <div>
+                      <h3 className="font-medium text-gray-900">{report.student_name}</h3>
+                      <p className="text-sm text-gray-500">{report.report_type}</p>
+                    </div>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleReviewReport(report)}
+                  >
+                    Review
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
           ))}
         </div>
       </div>
