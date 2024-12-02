@@ -169,6 +169,13 @@ class UserViewSet(viewsets.ModelViewSet):
                 'message': str(e)
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+    def perform_update(self, serializer):
+        if 'password' in serializer.validated_data:
+            password = serializer.validated_data['password']
+            self.request.user.set_password(password)
+            self.request.user.save()
+        serializer.save()
+
 class PasswordResetView(APIView):
     permission_classes = [AllowAny]
 

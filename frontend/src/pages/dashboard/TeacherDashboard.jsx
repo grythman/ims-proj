@@ -1,86 +1,82 @@
-import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
 import {
-  ClipboardCheck,
+  BarChart3,
   Users,
+  Calendar,
+  ClipboardCheck,
   FileText,
-  ChartBar,
+  TrendingUp,
+  Award,
   CheckCircle,
-  AlertCircle,
+  GraduationCap,
   Clock,
-  Search
+  BookOpen
 } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { toast } from 'react-hot-toast';
+import { Link } from 'react-router-dom';
 import { Button } from '../../components/UI/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/UI/Card';
-import { toast } from 'react-hot-toast';
+import { useAuth } from '../../context/AuthContext';
 import teacherApi from '../../services/teacherApi';
-import MonitorMentorEvaluation from '../../components/teacher/MonitorMentorEvaluation';
-import MonitorStudentProgress from '../../components/teacher/MonitorStudentProgress';
 
-// Create StatCard component for reuse
-const StatCard = ({ title, value, icon: Icon, color, gradient }) => (
-  <Card className={`bg-gradient-to-br ${gradient} text-white`}>
-    <CardHeader className="flex flex-row items-center justify-between pb-2">
-      <CardTitle className="text-sm font-medium text-white/90">{title}</CardTitle>
-      <Icon className="h-4 w-4 text-white/70" />
-    </CardHeader>
-    <CardContent>
-      <div className="text-3xl font-bold">{value || 0}</div>
+// Update StatCard to use green color scheme
+const StatCard = ({ title, value, icon: Icon, description }) => (
+  <Card className="hover:shadow-lg transition-shadow">
+    <CardContent className="p-6">
+      <div className="flex items-center justify-between">
+        <div className="w-12 h-12 rounded-full bg-emerald-50 flex items-center justify-center">
+          <Icon className="h-6 w-6 text-emerald-600" />
+        </div>
+        <div className="text-right">
+          <p className="text-2xl font-bold text-gray-900">{value}</p>
+          <p className="text-sm text-gray-500">{title}</p>
+        </div>
+      </div>
+      {description && (
+        <p className="mt-4 text-sm text-gray-600">{description}</p>
+      )}
     </CardContent>
   </Card>
 );
 
 const TeacherDashboard = () => {
+  const { user } = useAuth();
   const [dashboardData, setDashboardData] = useState({
     totalStudents: 0,
-    pendingReports: 0,
-    completedEvaluations: 0,
-    recentReports: []
+    pendingEvaluations: 0,
+    approvedReports: 0,
+    recentActivity: [],
+    studentPerformance: []
   });
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [filteredReports, setFilteredReports] = useState([]);
-  const [error, setError] = useState(null);
 
   useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        const overview = await teacherApi.dashboard.getOverview();
+        const stats = await teacherApi.dashboard.getStats();
+        const activities = await teacherApi.dashboard.getActivities();
+
+        setDashboardData({
+          ...overview,
+          ...stats,
+          recentActivity: activities
+        });
+      } catch (error) {
+        console.error('Error fetching dashboard data:', error);
+        toast.error('Failed to load dashboard data');
+      } finally {
+        setLoading(false);
+      }
+    };
+
     fetchDashboardData();
   }, []);
-
-  const fetchDashboardData = async () => {
-    try {
-      const data = await teacherApi.dashboard.getOverview();
-      setDashboardData(data);
-      setFilteredReports(data.recentReports || []);
-    } catch (error) {
-      console.error('Error fetching dashboard data:', error);
-      setError('Failed to load dashboard data');
-      toast.error('Failed to load dashboard data');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSearch = (query) => {
-    setSearchQuery(query);
-    const filtered = (dashboardData.recentReports || []).filter(report => 
-      report.student_name?.toLowerCase().includes(query.toLowerCase()) ||
-      report.report_type?.toLowerCase().includes(query.toLowerCase())
-    );
-    setFilteredReports(filtered);
-  };
 
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-red-500">{error}</div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500"></div>
       </div>
     );
   }
@@ -88,145 +84,143 @@ const TeacherDashboard = () => {
   const stats = [
     {
       title: "Total Students",
-      value: dashboardData.totalStudents || 0,
+      value: dashboardData.totalStudents,
       icon: Users,
-      gradient: "from-blue-500 to-blue-600"
+      description: "Students under your supervision"
     },
     {
-      title: "Pending Reports",
-      value: dashboardData.pendingReports || 0,
-      icon: FileText,
-      gradient: "from-yellow-500 to-yellow-600"
+      title: "Pending Evaluations",
+      value: dashboardData.pendingEvaluations,
+      icon: ClipboardCheck,
+      description: "Evaluations waiting for review"
     },
     {
-      title: "Completed Evaluations",
-      value: dashboardData.completedEvaluations || 0,
+      title: "Approved Reports",
+      value: dashboardData.approvedReports,
       icon: CheckCircle,
-      gradient: "from-green-500 to-green-600"
+      description: "Reports approved this semester"
+    },
+    {
+      title: "Average Performance",
+      value: "85%",
+      icon: Award,
+      description: "Overall student performance"
     }
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Welcome Section */}
-      <div className="bg-white rounded-lg shadow-sm p-6">
-        <h1 className="text-2xl font-bold text-gray-900">Welcome back, Teacher</h1>
-        <p className="mt-1 text-sm text-gray-500">Here's an overview of your students' progress</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">
+            Welcome back, {user?.first_name || 'Teacher'}! 👋
+          </h1>
+          <p className="mt-1 text-gray-500">
+            Monitor and evaluate your students' internship progress.
+          </p>
+        </div>
+        <Button
+          as={Link}
+          to="/teacher/evaluations/new"
+          className="bg-emerald-600 hover:bg-emerald-700 text-white"
+        >
+          <CheckCircle className="h-4 w-4 mr-2" />
+          New Evaluation
+        </Button>
       </div>
 
-      {/* Stats Overview */}
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+      {/* Stats Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {stats.map((stat, index) => (
           <StatCard key={index} {...stat} />
         ))}
       </div>
 
-      {/* Reports Section */}
-      <div className="bg-white rounded-lg shadow-sm p-6">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-lg font-semibold text-gray-900">Recent Reports</h2>
-          <div className="relative">
-            <input
-              type="text"
-              placeholder="Search reports..."
-              value={searchQuery}
-              onChange={(e) => handleSearch(e.target.value)}
-              className="w-64 rounded-full bg-gray-100 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-            <Search className="absolute right-3 top-2.5 h-4 w-4 text-gray-400" />
-          </div>
-        </div>
-
-        <div className="space-y-4">
-          {filteredReports.map((report) => (
-            <Card key={report.id}>
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <div className={`p-2 rounded-full ${
-                      report.status === 'pending' ? 'bg-yellow-100' : 
-                      report.status === 'approved' ? 'bg-green-100' : 
-                      'bg-red-100'
-                    }`}>
-                      {report.status === 'pending' ? <Clock className="h-5 w-5 text-yellow-600" /> :
-                       report.status === 'approved' ? <CheckCircle className="h-5 w-5 text-green-600" /> :
-                       <AlertCircle className="h-5 w-5 text-red-600" />}
-                    </div>
-                    <div>
-                      <h3 className="font-medium text-gray-900">{report.student_name}</h3>
-                      <p className="text-sm text-gray-500">{report.report_type}</p>
-                    </div>
+      {/* Main Content Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* Student Performance Section */}
+        <Card className="col-span-1">
+          <CardHeader className="border-b p-6">
+            <CardTitle className="text-lg font-semibold">Student Performance</CardTitle>
+          </CardHeader>
+          <CardContent className="p-6">
+            <div className="space-y-6">
+              {dashboardData.studentPerformance?.map((student, index) => (
+                <div key={index} className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium text-gray-600">{student.name}</span>
+                    <span className="text-sm font-medium text-emerald-600">{student.score}%</span>
                   </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleReviewReport(report)}
-                  >
-                    Review
-                  </Button>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div
+                      className="bg-emerald-600 h-2 rounded-full"
+                      style={{ width: `${student.score}%` }}
+                    />
+                  </div>
                 </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </div>
-
-      {/* Mentor Evaluations Section */}
-      <div className="bg-white rounded-lg shadow-sm p-6">
-        <div className="mb-6">
-          <h2 className="text-lg font-semibold text-gray-900">Mentor Evaluations</h2>
-          <p className="text-sm text-gray-500">Monitor and review mentor evaluations</p>
-        </div>
-        <MonitorMentorEvaluation />
-      </div>
-
-      {/* Student Progress Section */}
-      <div className="bg-white rounded-lg shadow-sm p-6">
-        <div className="mb-6">
-          <h2 className="text-lg font-semibold text-gray-900">Student Progress</h2>
-          <p className="text-sm text-gray-500">Monitor and track student internship progress</p>
-        </div>
-        <MonitorStudentProgress />
-      </div>
-
-      {/* Quick Actions */}
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="font-medium text-gray-900">Evaluate Reports</h3>
-                <p className="text-sm text-gray-500">Review and grade student reports</p>
-              </div>
-              <Button variant="primary">Start Review</Button>
+              ))}
             </div>
           </CardContent>
         </Card>
 
-        <Card>
+        {/* Recent Activity */}
+        <Card className="col-span-1">
+          <CardHeader className="border-b p-6">
+            <CardTitle className="text-lg font-semibold">Recent Activity</CardTitle>
+          </CardHeader>
           <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="font-medium text-gray-900">Student Progress</h3>
-                <p className="text-sm text-gray-500">Track internship progress</p>
-              </div>
-              <Button variant="primary">View Progress</Button>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="font-medium text-gray-900">Generate Reports</h3>
-                <p className="text-sm text-gray-500">Create evaluation reports</p>
-              </div>
-              <Button variant="primary">Generate</Button>
+            <div className="space-y-6">
+              {dashboardData.recentActivity.map((activity, index) => (
+                <div key={index} className="flex items-start space-x-4">
+                  <div className="w-8 h-8 rounded-full bg-emerald-50 flex items-center justify-center flex-shrink-0">
+                    <activity.icon className="h-4 w-4 text-emerald-600" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-900">{activity.title}</p>
+                    <p className="text-sm text-gray-500">{activity.description}</p>
+                  </div>
+                  <div className="text-sm text-gray-500">
+                    {new Date(activity.timestamp).toLocaleDateString()}
+                  </div>
+                </div>
+              ))}
             </div>
           </CardContent>
         </Card>
       </div>
+
+      {/* Pending Evaluations Section */}
+      <Card>
+        <CardHeader className="border-b p-6">
+          <CardTitle className="text-lg font-semibold">Pending Evaluations</CardTitle>
+        </CardHeader>
+        <CardContent className="p-6">
+          <div className="space-y-4">
+            {dashboardData.pendingEvaluationsList?.map((evaluation, index) => (
+              <div key={index} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                <div className="flex items-center space-x-4">
+                  <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center">
+                    <BookOpen className="h-5 w-5 text-emerald-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">{evaluation.studentName}</p>
+                    <p className="text-sm text-gray-500">{evaluation.type}</p>
+                  </div>
+                </div>
+                <Button
+                  as={Link}
+                  to={`/teacher/evaluations/${evaluation.id}`}
+                  variant="outline"
+                  className="text-emerald-600 hover:bg-emerald-50"
+                >
+                  Evaluate
+                </Button>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 };

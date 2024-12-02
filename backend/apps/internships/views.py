@@ -30,6 +30,7 @@ from django.shortcuts import get_object_or_404
 from rest_framework.views import APIView
 from django.conf import settings
 from django.core.exceptions import ValidationError
+from rest_framework.exceptions import PermissionDenied
 
 User = get_user_model()
 

@@ -1,6 +1,9 @@
 from django.db import models
 from django.conf import settings
 from django.core.exceptions import ValidationError
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
 
 # Create your models here.
 
@@ -12,11 +15,7 @@ class ChatRoom(models.Model):
 
     name = models.CharField(max_length=255, blank=True)
     type = models.CharField(max_length=10, choices=ROOM_TYPES, default='private')
-    participants = models.ManyToManyField(
-        settings.AUTH_USER_MODEL, 
-        related_name='chat_rooms',
-        through='ChatRoomParticipant'
-    )
+    participants = models.ManyToManyField(User, related_name='chat_rooms')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     last_message_at = models.DateTimeField(auto_now_add=True)
@@ -54,12 +53,13 @@ class Message(models.Model):
     room = models.ForeignKey(
         ChatRoom, 
         on_delete=models.CASCADE, 
-        related_name='messages'
+        related_name='messages',
+        db_index=True
     )
     sender = models.ForeignKey(
-        settings.AUTH_USER_MODEL, 
+        User, 
         on_delete=models.CASCADE,
-        related_name='sent_messages'
+        db_index=True
     )
     content = models.TextField()
     file = models.FileField(
@@ -68,7 +68,7 @@ class Message(models.Model):
         blank=True
     )
     is_system_message = models.BooleanField(default=False)
-    created_at = models.DateTimeField(auto_now_add=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
     updated_at = models.DateTimeField(auto_now=True)
     read_by = models.ManyToManyField(
         settings.AUTH_USER_MODEL,
@@ -77,14 +77,14 @@ class Message(models.Model):
     )
 
     class Meta:
-        ordering = ['created_at']
+        ordering = ['-created_at']
         indexes = [
-            models.Index(fields=['room', 'created_at']),
-            models.Index(fields=['sender', 'created_at']),
+            models.Index(fields=['room', '-created_at'], name='message_room_created_at_idx'),
+            models.Index(fields=['sender'], name='message_sender_idx'),
         ]
 
     def __str__(self):
-        return f"Message from {self.sender.username} in {self.room}"
+        return f"Message {self.id} in Room {self.room.id}"
 
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)

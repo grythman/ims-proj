@@ -1,33 +1,34 @@
-import {
-  BarChart3,
-  Bell,
-  FileText,
-  GraduationCap,
-  Home,
-  Menu,
-  MessageSquare,
-  Search,
-  User,
-  Users,
-  ClipboardList
-} from 'lucide-react';
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Button } from '../components/UI/Button';
 import { useAuth } from '../context/AuthContext';
+import {
+  GraduationCap,
+  Menu,
+  Bell,
+  User,
+  FileText,
+  Users,
+  CheckCircle,
+  BarChart3,
+  Calendar,
+  Home,
+  Settings,
+  HelpCircle,
+  Briefcase,
+  ClipboardCheck
+} from 'lucide-react';
+import { Button } from '../components/UI/Button';
 
 // Navigation configuration for mentor
 const mentorNavigation = [
-  { name: 'Dashboard', icon: Home, path: '/dashboard' },
-  { name: 'Monitor Students', icon: Users, path: '/dashboard/monitor' },
-  { name: 'Review Reports', icon: FileText, path: '/dashboard/review' },
-  { name: 'Give Advice', icon: MessageSquare, path: '/dashboard/advice' },
-  { name: 'Statistics', icon: BarChart3, path: '/dashboard/statistics' }
-];
-
-const quickActions = [
-  { name: 'Review Reports', icon: FileText, path: '/dashboard/review' },
-  { name: 'Student Progress', icon: BarChart3, path: '/dashboard/monitor' }
+  { name: 'Dashboard', icon: Home, path: '/mentor/dashboard' },
+  { name: 'My Students', icon: Users, path: '/mentor/students' },
+  { name: 'Evaluations', icon: CheckCircle, path: '/mentor/evaluations' },
+  { name: 'Reports Review', icon: FileText, path: '/mentor/reports' },
+  { name: 'Tasks', icon: ClipboardCheck, path: '/mentor/tasks' },
+  { name: 'Calendar', icon: Calendar, path: '/mentor/calendar' },
+  { name: 'Analytics', icon: BarChart3, path: '/mentor/analytics' },
+  { name: 'Settings', icon: Settings, path: '/mentor/settings' }
 ];
 
 // Profile Menu Component
@@ -43,7 +44,7 @@ const ProfileMenu = ({ user, onLogout }) => {
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center space-x-3 focus:outline-none"
       >
-        <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
+        <div className="h-10 w-10 rounded-full bg-emerald-100 flex items-center justify-center">
           {user?.profile_picture ? (
             <img
               src={user.profile_picture}
@@ -51,7 +52,7 @@ const ProfileMenu = ({ user, onLogout }) => {
               className="h-10 w-10 rounded-full object-cover"
             />
           ) : (
-            <span className="text-sm font-medium text-blue-600">
+            <span className="text-sm font-medium text-emerald-600">
               {initials.toUpperCase()}
             </span>
           )}
@@ -60,26 +61,26 @@ const ProfileMenu = ({ user, onLogout }) => {
           <p className="text-sm font-medium text-gray-700">
             {user?.first_name} {user?.last_name}
           </p>
-          <p className="text-xs text-gray-500">Mentor</p>
+          <p className="text-xs text-emerald-500">Mentor</p>
         </div>
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50 border">
+        <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-1 z-50">
           <div className="px-4 py-2 border-b">
             <p className="text-sm font-medium text-gray-900">{user?.username}</p>
             <p className="text-xs text-gray-500">{user?.email}</p>
           </div>
           <Link
-            to="/dashboard/profile"
-            className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+            to="/mentor/profile"
+            className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
             onClick={() => setIsOpen(false)}
           >
             Profile Settings
           </Link>
           <button
             onClick={onLogout}
-            className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
+            className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-50"
           >
             Sign out
           </button>
@@ -92,113 +93,113 @@ const ProfileMenu = ({ user, onLogout }) => {
 const MentorDashboardLayout = ({ children }) => {
   const { user, logout } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
   const location = useLocation();
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="sticky top-0 z-50 w-full bg-white border-b shadow-sm">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="flex h-16 items-center justify-between">
-            {/* Logo & Navigation */}
-            <div className="flex items-center">
-              <Link to="/" className="flex items-center space-x-2">
-                <GraduationCap className="h-8 w-8 text-blue-600" />
-                <span className="hidden text-xl font-bold text-gray-900 sm:inline-block">
-                  IMS
-                </span>
-              </Link>
-              <nav className="hidden md:ml-8 md:flex md:space-x-4">
+    <div className="flex h-screen bg-gray-100">
+      {/* Sidebar */}
+      <aside className="hidden md:flex md:flex-col md:w-64 bg-white border-r">
+        {/* Logo */}
+        <div className="h-16 flex items-center px-6 border-b">
+          <Link to="/" className="flex items-center space-x-2">
+            <GraduationCap className="h-8 w-8 text-emerald-600" />
+            <span className="text-xl font-bold text-gray-900">IMS</span>
+          </Link>
+        </div>
+
+        {/* Navigation */}
+        <nav className="flex-1 px-4 py-4 space-y-1">
+          {mentorNavigation.map((item) => (
+            <Link
+              key={item.name}
+              to={item.path}
+              className={`flex items-center px-4 py-2 text-sm font-medium rounded-lg ${
+                location.pathname === item.path
+                  ? 'bg-emerald-50 text-emerald-600'
+                  : 'text-gray-600 hover:bg-gray-50'
+              }`}
+            >
+              <item.icon className="h-5 w-5 mr-3" />
+              {item.name}
+            </Link>
+          ))}
+        </nav>
+      </aside>
+
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Header */}
+        <header className="h-16 bg-white border-b flex items-center px-6">
+          <div className="flex-1 flex items-center">
+            {/* Mobile menu button - Left aligned */}
+            <button
+              className="md:hidden"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            >
+              <Menu className="h-6 w-6 text-gray-600" />
+            </button>
+            
+            {/* Page Title - Center aligned */}
+            <h1 className="text-xl font-semibold text-gray-800 md:ml-4">
+              {mentorNavigation.find(item => item.path === location.pathname)?.name || 'Dashboard'}
+            </h1>
+          </div>
+
+          {/* Right side actions - Right aligned */}
+          <div className="flex items-center space-x-4">
+            <button className="text-gray-600 hover:text-gray-900 relative p-2 hover:bg-gray-50 rounded-full">
+              <Bell className="h-6 w-6" />
+              <span className="absolute top-1 right-1 h-4 w-4 rounded-full bg-red-500 text-xs text-white flex items-center justify-center">
+                3
+              </span>
+            </button>
+            <div className="border-l h-8 mx-2"></div>
+            <ProfileMenu user={user} onLogout={logout} />
+          </div>
+        </header>
+
+        {/* Mobile Navigation */}
+        {mobileMenuOpen && (
+          <div className="md:hidden fixed inset-0 z-40 bg-black bg-opacity-50">
+            <div className="fixed inset-y-0 left-0 w-64 bg-white">
+              <div className="h-16 flex items-center justify-between px-6 border-b">
+                <Link to="/" className="flex items-center space-x-2">
+                  <GraduationCap className="h-8 w-8 text-emerald-600" />
+                  <span className="text-xl font-bold text-gray-900">IMS</span>
+                </Link>
+                <button 
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="p-2 rounded-lg hover:bg-gray-100"
+                >
+                  <Menu className="h-6 w-6 text-gray-600" />
+                </button>
+              </div>
+              <nav className="px-4 py-4 space-y-1">
                 {mentorNavigation.map((item) => (
-                  <Button
+                  <Link
                     key={item.name}
-                    as={Link}
                     to={item.path}
-                    variant={location.pathname === item.path ? "primary" : "ghost"}
-                    size="sm"
-                    className="text-gray-600 hover:text-gray-900"
+                    className={`flex items-center px-4 py-2 text-sm font-medium rounded-lg ${
+                      location.pathname === item.path
+                        ? 'bg-emerald-50 text-emerald-600'
+                        : 'text-gray-600 hover:bg-gray-50'
+                    }`}
+                    onClick={() => setMobileMenuOpen(false)}
                   >
-                    <item.icon className="h-4 w-4 mr-2" />
+                    <item.icon className="h-5 w-5 mr-3" />
                     {item.name}
-                  </Button>
+                  </Link>
                 ))}
               </nav>
             </div>
-
-            {/* Search & Actions */}
-            <div className="flex items-center space-x-4">
-              <div className="hidden md:block">
-                <div className="relative">
-                  <input
-                    type="text"
-                    placeholder="Search students..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-64 rounded-full bg-gray-100 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                  <Search className="absolute right-3 top-2.5 h-4 w-4 text-gray-400" />
-                </div>
-              </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-gray-600 relative"
-              >
-                <Bell className="h-5 w-5" />
-                <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-red-500 text-xs text-white flex items-center justify-center">
-                  3
-                </span>
-              </Button>
-              <ProfileMenu user={user} onLogout={logout} />
-              <Button
-                variant="ghost"
-                size="sm"
-                className="md:hidden"
-                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              >
-                <Menu className="h-5 w-5" />
-              </Button>
-            </div>
           </div>
-        </div>
-      </header>
+        )}
 
-      {/* Mobile Menu */}
-      {mobileMenuOpen && (
-        <div className="md:hidden bg-white border-b">
-          <div className="px-4 py-3 space-y-1">
-            {mentorNavigation.map((item) => (
-              <Button
-                key={item.name}
-                as={Link}
-                to={item.path}
-                variant="ghost"
-                size="sm"
-                className="w-full justify-start"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                <item.icon className="h-5 w-5 mr-2" />
-                {item.name}
-              </Button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Role Badge */}
-      <div className="bg-gradient-to-r from-blue-500 to-indigo-500 text-white py-2">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <p className="text-sm font-medium">
-            Mentor Dashboard • {new Date().toLocaleDateString()}
-          </p>
-        </div>
+        {/* Main Content Area */}
+        <main className="flex-1 overflow-y-auto bg-gray-100 p-6">
+          {children}
+        </main>
       </div>
-
-      {/* Main Content */}
-      <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
-        {children}
-      </main>
     </div>
   );
 };

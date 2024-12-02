@@ -1,61 +1,55 @@
 from django.db import models
 from django.conf import settings
 from django.core.exceptions import ValidationError
+from django.utils import timezone
+from apps.companies.models import Organization
+
+User = settings.AUTH_USER_MODEL
 
 class Internship(models.Model):
-    STATUS_CHOICES = (
-        ('pending', 'Pending'),
-        ('active', 'Active'),
-        ('completed', 'Completed'),
-        ('cancelled', 'Cancelled'),
-    )
+    STATUS_PENDING = 0
+    STATUS_ACTIVE = 1
+    STATUS_COMPLETED = 2
+    STATUS_CANCELLED = 3
 
-    student = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name='internships'
-    )
-    mentor = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.SET_NULL,
-        null=True,
-        related_name='mentored_internships'
-    )
-    teacher = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.SET_NULL,
-        null=True,
-        related_name='supervised_internships'
-    )
-    organization = models.ForeignKey(
-        'companies.Organization',
-        on_delete=models.CASCADE,
-        related_name='internships'
-    )
+    STATUS_CHOICES = [
+        (STATUS_PENDING, 'Pending'),
+        (STATUS_ACTIVE, 'Active'),
+        (STATUS_COMPLETED, 'Completed'),
+        (STATUS_CANCELLED, 'Cancelled'),
+    ]
+
+    student = models.ForeignKey(User, on_delete=models.CASCADE, related_name='internships')
+    mentor = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='mentored_internships')
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name='internships')
     title = models.CharField(max_length=255)
     description = models.TextField()
     start_date = models.DateField()
     end_date = models.DateField()
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    status = models.IntegerField(choices=STATUS_CHOICES, default=STATUS_PENDING)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    company_name = models.CharField(max_length=255)
 
     class Meta:
         ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['student', 'status']),
+            models.Index(fields=['mentor']),
+            models.Index(fields=['organization']),
+        ]
 
     def __str__(self):
-        return f"{self.student.username}'s internship at {self.organization.name}"
+        return f"{self.student.get_full_name()}'s internship at {self.organization.name}"
 
-    @property
-    def duration_weeks(self):
+    def clean(self):
         if self.start_date and self.end_date:
-            delta = self.end_date - self.start_date
-            return delta.days // 7
-        return 0
+            if self.start_date >= self.end_date:
+                raise ValidationError("End date must be after start date.")
 
     @property
     def is_active(self):
-        return self.status == 'active'
+        return self.status == self.STATUS_ACTIVE
 
 class Task(models.Model):
     STATUS_CHOICES = (

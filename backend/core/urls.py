@@ -39,6 +39,7 @@ urlpatterns = [
     path('api/notifications/', include('apps.notifications.urls')),
     path('api/dashboard/', include('apps.dashboard.urls')),
     path('api/reports/', include('apps.reports.urls')),
+    path('api/evaluations/', include('apps.evaluations.urls')),
 ]
 
 if settings.DEBUG:

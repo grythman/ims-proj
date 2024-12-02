@@ -3,7 +3,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
 from django.core.exceptions import ValidationError
-from .models import Report, ReportTemplate
+from .models import Report, ReportTemplate, Internship
 from .serializers import (
     ReportSerializer, 
     ReportTemplateSerializer,
@@ -15,42 +15,25 @@ from rest_framework.views import APIView
 
 class ReportViewSet(viewsets.ModelViewSet):
     serializer_class = ReportSerializer
-    permission_classes = [permissions.IsAuthenticated, IsReportParticipant]
+    permission_classes = [permissions.IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['status', 'type', 'internship']
     search_fields = ['title', 'content']
     ordering_fields = ['submission_date', 'created_at']
 
     def get_queryset(self):
-        queryset = Report.objects.select_related(
-            'student', 'mentor', 'internship'
-        ).prefetch_related(
-            'comments', 'comments__author'
-        )
-
         user = self.request.user
         if user.user_type == 'student':
-            return queryset.filter(student=user)
-        elif user.user_type == 'mentor':
-            return queryset.filter(mentor=user)
-        return queryset
+            return Report.objects.filter(student=user)
+        elif user.user_type in ['mentor', 'teacher']:
+            return Report.objects.filter(internship__mentor=user)
+        return Report.objects.none()
 
     def perform_create(self, serializer):
-        internship = serializer.validated_data['internship']
-        report = serializer.save(
-            student=self.request.user,
-            mentor=internship.mentor
-        )
-
-        if report.status == 'pending':
-            # Notify mentor
-            if report.mentor:
-                NotificationService.create_notification(
-                    recipient=report.mentor,
-                    title='New Report Submitted',
-                    message=f'{report.student.get_full_name()} submitted a new report: {report.title}',
-                    notification_type='report'
-                )
+        internship = Internship.objects.filter(student=self.request.user, status=Internship.STATUS_ACTIVE).first()
+        if not internship:
+            raise ValidationError("No active internship found.")
+        serializer.save(student=self.request.user, internship=internship)
 
     @action(detail=True, methods=['POST'])
     def submit(self, request, pk=None):

@@ -55,65 +55,26 @@ class ReportTemplateSerializer(serializers.ModelSerializer):
         read_only_fields = ['created_by']
 
 class ReportSerializer(serializers.ModelSerializer):
-    student = UserSerializer(read_only=True)
-    mentor = UserSerializer(read_only=True)
-    comments = ReportCommentSerializer(many=True, read_only=True)
+    student = serializers.StringRelatedField(read_only=True)
+    internship = serializers.StringRelatedField(read_only=True)
     status_display = serializers.CharField(source='get_status_display', read_only=True)
-    type_display = serializers.CharField(source='get_type_display', read_only=True)
+    report_type_display = serializers.CharField(source='get_report_type_display', read_only=True)
     file_url = serializers.SerializerMethodField()
-    can_edit = serializers.SerializerMethodField()
-    can_review = serializers.SerializerMethodField()
-    review_time = serializers.SerializerMethodField()
-    submission_time = serializers.SerializerMethodField()
 
     class Meta:
         model = Report
         fields = [
-            'id', 'title', 'content', 'student', 'mentor',
-            'internship', 'type', 'type_display', 'status',
+            'id', 'title', 'content', 'student', 'internship',
+            'report_type', 'report_type_display', 'status',
             'status_display', 'feedback', 'file', 'file_url',
-            'submission_date', 'review_date', 'comments',
-            'can_edit', 'can_review', 'review_time',
-            'submission_time', 'created_at', 'updated_at'
+            'submission_date', 'review_date', 'created_at', 'updated_at'
         ]
-        read_only_fields = [
-            'student', 'mentor', 'submission_date',
-            'review_date', 'status'
-        ]
+        read_only_fields = ['student', 'status', 'submission_date', 'review_date', 'created_at', 'updated_at']
 
     def get_file_url(self, obj):
-        if obj.file:
+        if obj.file and hasattr(obj.file, 'url'):
             request = self.context.get('request')
-            if request:
-                return request.build_absolute_uri(obj.file.url)
-        return None
-
-    def get_can_edit(self, obj):
-        request = self.context.get('request')
-        if not request or not request.user:
-            return False
-        return (
-            request.user == obj.student and 
-            obj.status in ['draft', 'revised']
-        )
-
-    def get_can_review(self, obj):
-        request = self.context.get('request')
-        if not request or not request.user:
-            return False
-        return (
-            request.user == obj.mentor or
-            request.user.has_perm('reports.can_review_reports')
-        )
-
-    def get_review_time(self, obj):
-        if obj.review_date:
-            return obj.review_date.strftime('%Y-%m-%d %H:%M:%S')
-        return None
-
-    def get_submission_time(self, obj):
-        if obj.submission_date:
-            return obj.submission_date.strftime('%Y-%m-%d %H:%M:%S')
+            return request.build_absolute_uri(obj.file.url)
         return None
 
     def validate(self, data):

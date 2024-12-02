@@ -1,41 +1,31 @@
 from django.db import models
 from django.conf import settings
 
-# Create your models here.
+User = settings.AUTH_USER_MODEL
 
 class Notification(models.Model):
-    NOTIFICATION_TYPES = (
+    NOTIFICATION_TYPE_CHOICES = [
         ('report', 'Report'),
         ('task', 'Task'),
-        ('meeting', 'Meeting'),
-        ('message', 'Message'),
+        ('evaluation', 'Evaluation'),
         ('system', 'System'),
-    )
+    ]
 
-    recipient = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name='notifications'
-    )
+    recipient = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notifications')
     title = models.CharField(max_length=255)
     message = models.TextField()
-    notification_type = models.CharField(max_length=20, choices=NOTIFICATION_TYPES)
-    related_object_id = models.IntegerField(null=True, blank=True)
-    related_object_type = models.CharField(max_length=50, null=True, blank=True)
+    notification_type = models.CharField(max_length=20, choices=NOTIFICATION_TYPE_CHOICES)
     is_read = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         ordering = ['-created_at']
         indexes = [
-            models.Index(fields=['recipient', '-created_at']),
-            models.Index(fields=['notification_type', 'related_object_id']),
-            models.Index(fields=['is_read', '-created_at']),
+            models.Index(fields=['recipient', 'is_read'], name='notification_recipient_is_read_idx'),
         ]
 
     def __str__(self):
-        return f"{self.notification_type} notification for {self.recipient.username}"
+        return f"Notification for {self.recipient.username}"
 
 class NotificationPreference(models.Model):
     user = models.OneToOneField(

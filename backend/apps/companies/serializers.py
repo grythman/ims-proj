@@ -1,54 +1,32 @@
 from rest_framework import serializers
-from django.db.models import Count
-from .models import Organization, Department
-from apps.users.serializers import UserSerializer
+from .models import Organization
+from django.contrib.auth import get_user_model
 
-class DepartmentSerializer(serializers.ModelSerializer):
-    head_details = UserSerializer(source='head', read_only=True)
-    member_count = serializers.SerializerMethodField()
-    intern_count = serializers.SerializerMethodField()
-
-    class Meta:
-        model = Department
-        fields = [
-            'id', 'name', 'description', 'head', 'head_details',
-            'member_count', 'intern_count', 'is_active',
-            'created_at', 'updated_at'
-        ]
-
-    def get_member_count(self, obj):
-        return obj.members.count() if hasattr(obj, 'members') else 0
-
-    def get_intern_count(self, obj):
-        return obj.internships.filter(status='active').count()
+User = get_user_model()
 
 class OrganizationSerializer(serializers.ModelSerializer):
-    departments = DepartmentSerializer(many=True, read_only=True)
-    logo_url = serializers.SerializerMethodField()
-    stats = serializers.SerializerMethodField()
+    contact_person_name = serializers.CharField(source='contact_person.get_full_name', read_only=True)
+    contact_person_id = serializers.PrimaryKeyRelatedField(queryset=User.objects.all(), source='contact_person', write_only=True, required=False)
 
     class Meta:
         model = Organization
         fields = [
-            'id', 'name', 'description', 'website', 'address',
-            'contact_person', 'contact_email', 'contact_phone',
-            'logo', 'logo_url', 'is_active', 'departments',
-            'stats', 'created_at', 'updated_at'
+            'id', 'name', 'address', 'website', 'description',
+            'contact_person_id', 'contact_person_name',
+            'created_at', 'updated_at',
         ]
+        read_only_fields = ['id', 'created_at', 'updated_at', 'contact_person_name']
 
-    def get_logo_url(self, obj):
-        if obj.logo:
-            request = self.context.get('request')
-            if request:
-                return request.build_absolute_uri(obj.logo.url)
-        return None
+    def create(self, validated_data):
+        return Organization.objects.create(**validated_data)
 
-    def get_stats(self, obj):
-        return {
-            'department_count': obj.departments.count(),
-            'active_interns': obj.internships.filter(status='active').count(),
-            'total_interns': obj.internships.count(),
-            'mentor_count': obj.departments.filter(
-                head__user_type='mentor'
-            ).count()
-        }
+    def update(self, instance, validated_data):
+        instance.name = validated_data.get('name', instance.name)
+        instance.address = validated_data.get('address', instance.address)
+        instance.website = validated_data.get('website', instance.website)
+        instance.description = validated_data.get('description', instance.description)
+        contact_person = validated_data.get('contact_person', None)
+        if contact_person:
+            instance.contact_person = contact_person
+        instance.save()
+        return instance 

@@ -1,83 +1,30 @@
 from django.db import models
-from django.conf import settings
-from django.core.exceptions import ValidationError
+from django.contrib.auth import get_user_model
 
-# Create your models here.
+User = get_user_model()
 
 class Organization(models.Model):
-    name = models.CharField(max_length=200)
-    description = models.TextField(blank=True)
-    contact_person = models.CharField(max_length=100)
-    contact_email = models.EmailField()
-    contact_phone = models.CharField(max_length=20)
-    address = models.TextField()
+    name = models.CharField(max_length=255, db_index=True)
+    address = models.TextField(blank=True)
+    contact_person = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='organizations',
+        db_index=True
+    )
     website = models.URLField(blank=True)
-    is_active = models.BooleanField(default=True)
+    description = models.TextField(blank=True)
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['name']
+        indexes = [
+            models.Index(fields=['name'], name='organization_name_idx'),
+            models.Index(fields=['contact_person'], name='organization_contact_person_idx'),
+        ]
 
     def __str__(self):
         return self.name
-
-    class Meta:
-        ordering = ['-created_at']
-        verbose_name = 'Organization'
-        verbose_name_plural = 'Organizations'
-
-class Department(models.Model):
-    name = models.CharField(max_length=200)
-    organization = models.ForeignKey(
-        Organization,
-        on_delete=models.CASCADE,
-        related_name='departments'
-    )
-    description = models.TextField(blank=True)
-    head = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name='headed_departments'
-    )
-    is_active = models.BooleanField(default=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    def __str__(self):
-        return f"{self.name} - {self.organization.name}"
-
-    class Meta:
-        ordering = ['organization', 'name']
-        verbose_name = 'Department'
-        verbose_name_plural = 'Departments'
-
-# News model
-class News(models.Model):
-    title = models.CharField(max_length=200)
-    content = models.TextField()
-    author = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name='authored_news'
-    )
-    organization = models.ForeignKey(
-        Organization,
-        on_delete=models.CASCADE,
-        related_name='news',
-        null=True,
-        blank=True
-    )
-    is_published = models.BooleanField(default=False)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    def __str__(self):
-        return self.title
-
-    class Meta:
-        ordering = ['-created_at']
-        verbose_name = 'News'
-        verbose_name_plural = 'News'
-
-# Alias for backward compatibility
-Company = Organization

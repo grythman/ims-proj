@@ -1,34 +1,43 @@
-import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
 import {
-  FileText,
-  Users,
-  Calendar,
-  CheckCircle,
-  Clock,
   BarChart3,
   BookOpen,
-  ClipboardList
+  Calendar,
+  ClipboardList,
+  FileText,
+  Users,
+  Clock,
+  TrendingUp,
+  Award,
+  CheckCircle
 } from 'lucide-react';
-import { Button } from '../../components/UI/Button';
-import { Card, CardContent, CardHeader, CardTitle } from '../../components/UI/Card';
+import React, { useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
-import studentApi from '../../services/studentApi';
-import ViewMentorEvaluation from '../../components/student/ViewMentorEvaluation';
-import ViewTeacherEvaluation from '../../components/student/ViewTeacherEvaluation';
+import { Link } from 'react-router-dom';
 import PreliminaryReportCheck from '../../components/student/PreliminaryReportCheck';
 import ViewInternshipDuration from '../../components/student/ViewInternshipDuration';
+import ViewMentorEvaluation from '../../components/student/ViewMentorEvaluation';
+import ViewTeacherEvaluation from '../../components/student/ViewTeacherEvaluation';
+import { Button } from '../../components/UI/Button';
+import { Card, CardContent, CardHeader, CardTitle } from '../../components/UI/Card';
 import { useAuth } from '../../context/AuthContext';
+import studentApi from '../../services/studentApi';
 
-// Create StatCard component for reuse
-const StatCard = ({ title, value, icon: Icon, color, gradient }) => (
-  <Card className={`bg-gradient-to-br ${gradient} text-white`}>
-    <CardHeader className="flex flex-row items-center justify-between pb-2">
-      <CardTitle className="text-sm font-medium text-white/90">{title}</CardTitle>
-      <Icon className="h-4 w-4 text-white/70" />
-    </CardHeader>
-    <CardContent>
-      <div className="text-3xl font-bold">{value}</div>
+// Update StatCard to use emerald color scheme
+const StatCard = ({ title, value, icon: Icon, description, onClick }) => (
+  <Card className={`hover:shadow-lg transition-shadow ${onClick ? 'cursor-pointer' : ''}`}>
+    <CardContent className="p-6">
+      <div className="flex items-center justify-between">
+        <div className="w-12 h-12 rounded-full bg-emerald-50 flex items-center justify-center">
+          <Icon className="h-6 w-6 text-emerald-600" />
+        </div>
+        <div className="text-right">
+          <p className="text-2xl font-bold text-gray-900">{value}</p>
+          <p className="text-sm text-gray-500">{title}</p>
+        </div>
+      </div>
+      {description && (
+        <p className="mt-4 text-sm text-gray-600">{description}</p>
+      )}
     </CardContent>
   </Card>
 );
@@ -42,6 +51,7 @@ const StudentDashboard = () => {
     recentActivity: []
   });
   const [loading, setLoading] = useState(true);
+  const [activeModal, setActiveModal] = useState(null);
 
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -74,155 +84,203 @@ const StudentDashboard = () => {
     );
   }
 
+  const handleOpenModal = (modalName) => {
+    setActiveModal(modalName);
+  };
+
+  const handleCloseModal = () => {
+    setActiveModal(null);
+  };
+
   const stats = [
     {
       title: "Reports Submitted",
       value: dashboardData.reportsSubmitted,
       icon: FileText,
-      gradient: "from-blue-500 to-blue-600"
+      description: "Total reports submitted this semester",
+      onClick: () => handleOpenModal('submitReport')
     },
     {
       title: "Days Remaining",
       value: dashboardData.daysRemaining,
       icon: Calendar,
-      gradient: "from-emerald-500 to-emerald-600"
+      description: "Days left in your internship",
+      onClick: () => handleOpenModal('internshipDuration')
     },
     {
       title: "Overall Progress",
       value: `${dashboardData.overallProgress}%`,
-      icon: BarChart3,
-      gradient: "from-purple-500 to-purple-600"
+      icon: TrendingUp,
+      description: "Your overall internship progress"
+    },
+    {
+      title: "Tasks Completed",
+      value: "12/15",
+      icon: CheckCircle,
+      description: "Weekly tasks completion rate"
     }
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Welcome Section */}
-      <div className="bg-white rounded-lg shadow-sm p-6">
-        <h1 className="text-2xl font-bold text-gray-900">
-          Welcome back, {user?.first_name || 'Student'}
-        </h1>
-        <p className="mt-1 text-sm text-gray-500">
-          Track your internship progress and tasks
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">
+            Welcome back, {user?.first_name || 'Student'}! 👋
+          </h1>
+          <p className="mt-1 text-gray-500">
+            Here's what's happening with your internship today.
+          </p>
+        </div>
+        <div className="flex space-x-4">
+          <Button
+            onClick={() => handleOpenModal('submitReport')}
+            className="bg-emerald-600 hover:bg-emerald-700 text-white"
+          >
+            <FileText className="h-4 w-4 mr-2" />
+            New Report
+          </Button>
+          <Button
+            onClick={() => handleOpenModal('registerInternship')}
+            variant="outline"
+            className="text-emerald-600 hover:bg-emerald-50"
+          >
+            <BookOpen className="h-4 w-4 mr-2" />
+            Register Internship
+          </Button>
+        </div>
       </div>
 
-      {/* Stats Overview */}
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+      {/* Stats Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {stats.map((stat, index) => (
-          <StatCard key={index} {...stat} />
+          <div
+            key={index}
+            onClick={stat.onClick}
+            className={`${stat.onClick ? 'cursor-pointer' : ''}`}
+          >
+            <StatCard {...stat} />
+          </div>
         ))}
       </div>
 
-      {/* Quick Actions */}
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        <Card className="hover:shadow-md transition-shadow">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="w-12 h-12 rounded-lg bg-blue-100 flex items-center justify-center mb-4">
-                  <FileText className="h-6 w-6 text-blue-600" />
+      {/* Main Content Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* Progress Section */}
+        <div onClick={() => handleOpenModal('internshipDuration')} className="cursor-pointer">
+          <Card className="col-span-1 hover:shadow-lg transition-shadow">
+            <CardHeader className="border-b p-6">
+              <CardTitle className="text-lg font-semibold">Internship Progress</CardTitle>
+            </CardHeader>
+            <CardContent className="p-6">
+              <div className="space-y-6">
+                <div>
+                  <div className="flex justify-between mb-2">
+                    <span className="text-sm font-medium text-gray-600">Overall Progress</span>
+                    <span className="text-sm font-medium text-emerald-600">{dashboardData.overallProgress}%</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div
+                      className="bg-emerald-600 h-2 rounded-full"
+                      style={{ width: `${dashboardData.overallProgress}%` }}
+                    />
+                  </div>
                 </div>
-                <h3 className="font-medium text-gray-900">Submit Report</h3>
-                <p className="text-sm text-gray-500 mt-1">Upload your weekly or monthly report</p>
+                <ViewInternshipDuration />
               </div>
-              <Button
-                variant="outline"
-                as={Link}
-                to="/dashboard/reports"
-                className="text-blue-600"
-              >
-                Submit
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </div>
 
-        <Card className="hover:shadow-md transition-shadow">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="w-12 h-12 rounded-lg bg-emerald-100 flex items-center justify-center mb-4">
-                  <BookOpen className="h-6 w-6 text-emerald-600" />
-                </div>
-                <h3 className="font-medium text-gray-900">Register Internship</h3>
-                <p className="text-sm text-gray-500 mt-1">Register for a new internship position</p>
-              </div>
-              <Button
-                variant="outline"
-                as={Link}
-                to="/dashboard/internship"
-                className="text-emerald-600"
-              >
-                Register
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="hover:shadow-md transition-shadow">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="w-12 h-12 rounded-lg bg-purple-100 flex items-center justify-center mb-4">
-                  <ClipboardList className="h-6 w-6 text-purple-600" />
-                </div>
-                <h3 className="font-medium text-gray-900">Preliminary Check</h3>
-                <p className="text-sm text-gray-500 mt-1">Submit preliminary report check</p>
-              </div>
-              <Button
-                variant="outline"
-                className="text-purple-600"
-                onClick={() => document.getElementById('preliminary-check').scrollIntoView({ behavior: 'smooth' })}
-              >
-                Check
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Progress and Duration */}
-      <div className="grid gap-6 md:grid-cols-2">
-        <ViewInternshipDuration />
-        <PreliminaryReportCheck />
-      </div>
-
-      {/* Evaluations */}
-      <div className="grid gap-6 md:grid-cols-2">
-        <ViewMentorEvaluation />
-        <ViewTeacherEvaluation />
-      </div>
-
-      {/* Recent Activity */}
-      {dashboardData.recentActivity && dashboardData.recentActivity.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Recent Activity</CardTitle>
+        {/* Recent Activity */}
+        <Card className="col-span-1">
+          <CardHeader className="border-b p-6">
+            <CardTitle className="text-lg font-semibold">Recent Activity</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="divide-y divide-gray-100">
+          <CardContent className="p-6">
+            <div className="space-y-6">
               {dashboardData.recentActivity.map((activity, index) => (
-                <div key={index} className="p-4 hover:bg-gray-50 transition-colors">
-                  <div className="flex items-center space-x-3">
-                    <div className="flex-shrink-0">
-                      <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center">
-                        <activity.icon className="h-4 w-4 text-emerald-600" />
-                      </div>
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">{activity.title}</p>
-                      <p className="text-sm text-gray-500">{activity.description}</p>
-                    </div>
-                    <span className="ml-auto text-sm text-gray-500">
-                      {new Date(activity.timestamp).toLocaleDateString()}
-                    </span>
+                <div key={index} className="flex items-start space-x-4">
+                  <div className="w-8 h-8 rounded-full bg-emerald-50 flex items-center justify-center flex-shrink-0">
+                    <activity.icon className="h-4 w-4 text-emerald-600" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-900">{activity.title}</p>
+                    <p className="text-sm text-gray-500">{activity.description}</p>
+                  </div>
+                  <div className="text-sm text-gray-500">
+                    {new Date(activity.timestamp).toLocaleDateString()}
                   </div>
                 </div>
               ))}
             </div>
           </CardContent>
         </Card>
+      </div>
+
+      {/* Evaluations Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div onClick={() => handleOpenModal('mentorEvaluation')} className="cursor-pointer">
+          <ViewMentorEvaluation />
+        </div>
+        <div onClick={() => handleOpenModal('teacherEvaluation')} className="cursor-pointer">
+          <ViewTeacherEvaluation />
+        </div>
+      </div>
+
+      {/* Preliminary Report Check */}
+      <div className="mt-8" onClick={() => handleOpenModal('preliminaryCheck')}>
+        <PreliminaryReportCheck />
+      </div>
+
+      {/* Modals */}
+      {activeModal === 'submitReport' && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+          <div className="bg-white rounded-lg max-w-2xl w-full mx-4">
+            <SubmitReport onClose={handleCloseModal} />
+          </div>
+        </div>
+      )}
+
+      {activeModal === 'registerInternship' && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+          <div className="bg-white rounded-lg max-w-2xl w-full mx-4">
+            <RegisterInternship onClose={handleCloseModal} />
+          </div>
+        </div>
+      )}
+
+      {activeModal === 'mentorEvaluation' && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+          <div className="bg-white rounded-lg max-w-2xl w-full mx-4">
+            <ViewMentorEvaluation onClose={handleCloseModal} detailed />
+          </div>
+        </div>
+      )}
+
+      {activeModal === 'teacherEvaluation' && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+          <div className="bg-white rounded-lg max-w-2xl w-full mx-4">
+            <ViewTeacherEvaluation onClose={handleCloseModal} detailed />
+          </div>
+        </div>
+      )}
+
+      {activeModal === 'preliminaryCheck' && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+          <div className="bg-white rounded-lg max-w-2xl w-full mx-4">
+            <PreliminaryReportCheck onClose={handleCloseModal} detailed />
+          </div>
+        </div>
+      )}
+
+      {activeModal === 'internshipDuration' && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+          <div className="bg-white rounded-lg max-w-2xl w-full mx-4">
+            <ViewInternshipDuration onClose={handleCloseModal} detailed />
+          </div>
+        </div>
       )}
     </div>
   );

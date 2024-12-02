@@ -3,63 +3,33 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 
 class User(AbstractUser):
-    USER_TYPES = (
-        ('student', 'Student'),
-        ('mentor', 'Mentor'),
-        ('teacher', 'Teacher'),
-        ('admin', 'Admin'),
-    )
+    USER_TYPE_STUDENT = 'student'
+    USER_TYPE_MENTOR = 'mentor'
+    USER_TYPE_TEACHER = 'teacher'
+    USER_TYPE_ADMIN = 'admin'
 
-    # Add related_name to fix the clashing accessors
-    groups = models.ManyToManyField(
-        'auth.Group',
-        verbose_name=_('groups'),
-        blank=True,
-        related_name='custom_user_set',
-        help_text=_(
-            'The groups this user belongs to. A user will get all permissions '
-            'granted to each of their groups.'
-        ),
-    )
-    user_permissions = models.ManyToManyField(
-        'auth.Permission',
-        verbose_name=_('user permissions'),
-        blank=True,
-        related_name='custom_user_set',
-        help_text=_('Specific permissions for this user.'),
-    )
+    USER_TYPE_CHOICES = [
+        (USER_TYPE_STUDENT, 'Student'),
+        (USER_TYPE_MENTOR, 'Mentor'),
+        (USER_TYPE_TEACHER, 'Teacher'),
+        (USER_TYPE_ADMIN, 'Admin'),
+    ]
 
-    # Add user_type field
-    user_type = models.CharField(
-        max_length=20, 
-        choices=USER_TYPES, 
-        default='student'
-    )
+    user_type = models.CharField(max_length=20, choices=USER_TYPE_CHOICES, default=USER_TYPE_STUDENT)
     phone = models.CharField(max_length=15, blank=True, null=True)
-    bio = models.TextField(blank=True, null=True)
+    bio = models.TextField(blank=True)
     avatar = models.ImageField(upload_to='avatars/', null=True, blank=True)
-    skills = models.JSONField(default=list, blank=True, null=True)
-    last_active = models.DateTimeField(auto_now=True)
-    email_verified = models.BooleanField(default=False)
-    
+
     # Student specific fields
     student_id = models.CharField(max_length=20, blank=True, null=True)
     major = models.CharField(max_length=100, blank=True, null=True)
-    year_of_study = models.IntegerField(null=True, blank=True)
-    
+
     # Mentor specific fields
     company = models.CharField(max_length=100, blank=True, null=True)
     position = models.CharField(max_length=100, blank=True, null=True)
-    expertise = models.JSONField(default=list, blank=True, null=True)
-    
+
     # Teacher specific fields
     department_name = models.CharField(max_length=100, blank=True, null=True)
-    faculty_id = models.CharField(max_length=20, blank=True, null=True)
-    subject_area = models.CharField(max_length=100, blank=True, null=True)
-
-    class Meta:
-        verbose_name = _('user')
-        verbose_name_plural = _('users')
 
     def __str__(self):
         return self.username

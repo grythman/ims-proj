@@ -5,7 +5,7 @@ from django.db.models import Q
 from .models import Notification, NotificationPreference
 from .serializers import NotificationSerializer, NotificationPreferenceSerializer
 
-class NotificationViewSet(viewsets.ModelViewSet):
+class NotificationViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = NotificationSerializer
     permission_classes = [permissions.IsAuthenticated]
 
@@ -14,15 +14,16 @@ class NotificationViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['post'])
     def mark_all_read(self, request):
-        self.get_queryset().update(is_read=True)
-        return Response({'status': 'all notifications marked as read'})
+        updated = self.get_queryset().filter(is_read=False).update(is_read=True)
+        return Response({'status': f'{updated} notifications marked as read'})
 
     @action(detail=True, methods=['post'])
     def mark_read(self, request, pk=None):
         notification = self.get_object()
-        notification.is_read = True
-        notification.save()
-        return Response({'status': 'notification marked as read'})
+        if not notification.is_read:
+            notification.is_read = True
+            notification.save()
+        return Response({'status': 'Notification marked as read'})
 
     @action(detail=False)
     def unread_count(self, request):

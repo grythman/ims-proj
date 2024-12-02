@@ -4,6 +4,10 @@ from .models import Internship, Task, Agreement, InternshipPlan, Evaluation, Pre
 from apps.users.serializers import UserSerializer
 from apps.companies.serializers import OrganizationSerializer
 from apps.reports.serializers import ReportSerializer
+from companies.models import Organization
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
 
 class EvaluationSerializer(serializers.ModelSerializer):
     evaluator_name = serializers.CharField(source='evaluator.get_full_name', read_only=True)
@@ -66,75 +70,20 @@ class TaskSerializer(serializers.ModelSerializer):
         return None
 
 class InternshipSerializer(serializers.ModelSerializer):
-    student = UserSerializer(read_only=True)
-    mentor = UserSerializer(read_only=True)
-    organization = OrganizationSerializer(read_only=True)
-    tasks = TaskSerializer(many=True, read_only=True)
+    student = serializers.StringRelatedField(read_only=True)
+    mentor = serializers.StringRelatedField(read_only=True)
+    organization = serializers.StringRelatedField(read_only=True)
     status_display = serializers.CharField(source='get_status_display', read_only=True)
-    progress = serializers.FloatField(read_only=True)
-    is_overdue = serializers.BooleanField(read_only=True)
-    days_remaining = serializers.SerializerMethodField()
-    task_stats = serializers.SerializerMethodField()
-    mentor_evaluation = EvaluationSerializer(read_only=True)
-    teacher_evaluation = EvaluationSerializer(read_only=True)
-    preliminary_reports = PreliminaryReportSerializer(many=True, read_only=True)
-    duration_in_weeks = serializers.IntegerField(read_only=True)
-    is_active = serializers.BooleanField(read_only=True)
 
     class Meta:
         model = Internship
         fields = [
-            'id', 'student', 'mentor', 'organization', 'department',
-            'title', 'description', 'start_date', 'end_date', 'status',
-            'status_display', 'hours_required', 'hours_completed',
-            'progress', 'is_overdue', 'days_remaining', 'feedback',
-            'tasks', 'task_stats', 'mentor_evaluation', 'teacher_evaluation',
-            'preliminary_reports', 'duration_in_weeks', 'is_active',
+            'id', 'student', 'mentor', 'organization',
+            'title', 'description', 'start_date', 'end_date',
+            'status', 'status_display', 'company_name',
             'created_at', 'updated_at'
         ]
-        read_only_fields = ['hours_completed']
-
-    def get_days_remaining(self, obj):
-        if obj.end_date:
-            delta = obj.end_date - timezone.now().date()
-            return delta.days
-        return None
-
-    def get_task_stats(self, obj):
-        tasks = obj.tasks.all()
-        total = tasks.count()
-        if total == 0:
-            return {
-                'total': 0,
-                'completed': 0,
-                'pending': 0,
-                'overdue': 0,
-                'completion_rate': 0
-            }
-
-        completed = tasks.filter(status='completed').count()
-        pending = tasks.filter(status='pending').count()
-        overdue = sum(1 for task in tasks if task.is_overdue)
-
-        return {
-            'total': total,
-            'completed': completed,
-            'pending': pending,
-            'overdue': overdue,
-            'completion_rate': (completed / total) * 100
-        }
-
-    def validate(self, data):
-        if data.get('start_date') and data.get('end_date'):
-            if data['start_date'] > data['end_date']:
-                raise serializers.ValidationError(
-                    "End date must be after start date"
-                )
-            if data['start_date'] < timezone.now().date():
-                raise serializers.ValidationError(
-                    "Start date cannot be in the past"
-                )
-        return data
+        read_only_fields = ['student', 'created_at', 'updated_at']
 
 class InternshipCreateSerializer(InternshipSerializer):
     student_id = serializers.IntegerField(write_only=True)
@@ -290,19 +239,27 @@ class InternshipPlanSerializer(serializers.ModelSerializer):
 
 
 class InternshipRegistrationSerializer(serializers.ModelSerializer):
+    organization = OrganizationSerializer()
+
     class Meta:
         model = Internship
         fields = [
-            'organization', 'title', 'description',
-            'start_date', 'end_date'
+            'organization', 'position', 'start_date',
+            'end_date', 'additionalInfo', 'status'
         ]
 
-    def validate(self, data):
-        if data['start_date'] >= data['end_date']:
-            raise serializers.ValidationError(
-                "End date must be after start date"
-            )
-        return data
+    def create(self, validated_data):
+        organization_data = validated_data.pop('organization')
+        organization, created = Organization.objects.get_or_create(
+            name=organization_data['name'],
+            defaults=organization_data
+        )
+        internship = Internship.objects.create(
+            organization=organization,
+            student=self.context['request'].user,
+            **validated_data
+        )
+        return internship
 
 class TeacherReportReviewSerializer(serializers.ModelSerializer):
     student_name = serializers.CharField(source='internship.student.get_full_name', read_only=True)
